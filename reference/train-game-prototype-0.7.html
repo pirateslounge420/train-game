@@ -105,7 +105,7 @@ body{margin:0;background:var(--soot);color:var(--ink);font-family:var(--font-hud
 .res span{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-dim)}
 #loaderr{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--ink);font-size:18px}
 @media (prefers-reduced-motion:reduce){.pop{animation-duration:.6s}#alert.urgent,.slot.urgent{animation:none}}
-@media (max-height:420px){#speedo .big{font-size:22px}#draw{width:84px;height:84px}#crouch{width:60px;height:60px}#jump{width:60px;height:60px}.stat .big{font-size:22px}#stick{width:96px;height:96px}#knob{width:44px;height:44px;margin:-22px 0 0 -22px}#grab{height:44px}}
+@media (max-height:420px){#speedo .big{font-size:22px}#draw{width:84px;height:84px}#crouch{width:60px;height:60px}#surge{width:60px;height:60px}#jump{width:60px;height:60px}.stat .big{font-size:22px}#stick{width:96px;height:96px}#knob{width:44px;height:44px;margin:-22px 0 0 -22px}#grab{height:44px}}
 </style>
 <div id="game"><canvas id="c" tabindex="0"></canvas></div>
 <div id="vig"></div>
@@ -816,7 +816,7 @@ const HORSE_RIG=[
   {n:'upperBL', p:'croup',  at:[-0.17,-0.32,0], rot:[0,0,0],     box:[[0.14,0.45,0.15,0,-0.22,0]],             mass:20, c:[0,-0.22,0],  r:0.17,pri:9, hp:1,leg:'BL'},
   {n:'lowerBL', p:'upperBL',at:[0,-0.44,0],     rot:[0,0,0],     box:[[0.11,0.44,0.12,0,-0.22,0],[0.13,0.08,0.15,0,-0.46,0,'hoof']], mass:8,c:[0,-0.24,0],r:0.15,pri:8,hp:1,leg:'BL'},
   {n:'upperBR', p:'croup',  at:[0.17,-0.32,0],  rot:[0,0,0],     box:[[0.14,0.45,0.15,0,-0.22,0]],             mass:20, c:[0,-0.22,0],  r:0.17,pri:9, hp:1,leg:'BR'},
-  {n:'lowerBR', p:'upperBR',at:[0,-0.44,0],     rot:[0,0,0],     box:[[0.11,0.44,0.12,0,-0.46,0,'hoof'],[0.11,0.44,0.12,0,-0.22,0]], mass:8,c:[0,-0.24,0],r:0.15,pri:8,hp:1,leg:'BR'},
+  {n:'lowerBR', p:'upperBR',at:[0,-0.44,0],     rot:[0,0,0],     box:[[0.11,0.44,0.12,0,-0.22,0],[0.13,0.08,0.15,0,-0.46,0,'hoof']], mass:8,c:[0,-0.24,0],r:0.15,pri:8,hp:1,leg:'BR'},
 ];
 const RIDER_RIG=[
   {n:'pelvis',    p:'barrel',   at:[0,0.42,0.05], rot:[0,0,0],      box:[[0.36,0.2,0.3,0,0.1,0,'dark']],        mass:14,c:[0,0.1,0],   r:0.2, pri:10,hp:1},
@@ -1686,7 +1686,7 @@ function tapGrab(cx,cy){
   for(const s of world.stuck){ if(!reachable(s)) continue; s.m.getWorldPosition(_v2); _v2.project(camera); if(_v2.z>1) continue; const sx=(_v2.x+1)/2*w, sy=(1-_v2.y)/2*h; const d=Math.hypot(sx-cx,sy-cy); if(d<bd){ bd=d; bestS=s; } }
   if(bestS) takeStuck(bestS);
 }
-// the conductor opens her up when riders crowd the train
+// steam surge: the player's call, from the tender only (never the conductor's)
 function doSurge(){
   if(world.state!=='playing'||foot.on) return;
   if(world.trainState!=='run'){ hint('Wait till she\'s rolling'); return; }
@@ -1736,7 +1736,6 @@ function updateTrain(dt){
   }
   if(world.trainState==='stop'){ if(!foot.on) world.stopT-=dt; if(world.stopT<=0){ world.trainState='run'; if(world.stopHere==='town') world.nextTown++; world.stopHere='town'; sfx.whistle(); } }
   world.speed=Math.min(world.speed,MAX_SPEED);
-  world.surge=Math.max(0,world.surge-dt);
   world.d+=world.speed*dt;
   placeCars();
   trainForward(trainVel).multiplyScalar(world.speed);
