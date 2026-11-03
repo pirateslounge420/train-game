@@ -1,5 +1,10 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (evening) — Claude Code: stretches 100 % longer (§Y, part of §Z item 0)
+- `src/world/line.js`: region length is now cruise × 210 s (was × 131 s), so towns are further apart: the first at 3,150 m instead of 1,965 m, the second 4,200 m after that. Tunnels, biome blends and the rider no-spawn zones all work from the town positions, so they moved with it. The same seed gives a different map from before, because every town moved.
+- Checked in the browser (seed 7): the train stops at 3,150 m after 220 s, with the first tunnel at 4,998–5,318 m, in the middle of the second stretch. No console errors. Not tested on a phone.
+- This is the only part of §Z item 0 done. Still to do: arrows passing through riders, the cam bow speeds, two surges, 15 arrows a town. The §I HUD Mike approved has not been started; §Z now puts item 0 ahead of it, so that order is with Mike.
+
 ## 2026-11-03 (late afternoon) — Claude (chat): design §X and §Y from Mike's voice session
 - §X, the cyborg player: the "every part has a job" rule; arrows passing through riders (fix first); the cam bow (short ~250 mph, longbow 400+ mph); floating three-fingered magnet hands, attached legs; losing a hand, foot, head or torso; crits by where hits land, rarer against you; the magnet hand replaces §S's grappling hook (tap grab, hold to launch, elastic hang and snap-back, catching the train when knocked off); fists and rocket punch; the one-handed Derringer that over-penetrates; controls; 15 arrows a town; carrying a friend's head in co-op.
 - §Y, the train under fire: two surges a stretch; banking and sparks at speed; the conductor's hard brake into towns; car health (bombs only, towns repair, destroyed cars stay gone, engine = run over); the rival train on a parallel line; bombs and the charged rally; boarding and the horse ferry; gangs that pile up.

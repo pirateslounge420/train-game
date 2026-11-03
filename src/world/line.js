@@ -73,12 +73,12 @@ export const BIOMES = [
 const CLIMATE = { Prairie: [0.55, 0.6], 'Red Desert': [0.9, 0.15], 'High Pass': [0.25, 0.45], 'Pine Country': [0.35, 0.8], 'Salt Flats': [0.7, 0.1], Badlands: [0.75, 0.35] };
 
 // Each region is longer and faster than the last: cruise 15 m/s + 5 a region,
-// capped at 62; a region lasts 131 s at its cruise (§G, §K).
+// capped at 62; a region lasts 210 s at its cruise (§G, §Y).
 export function regionSpeed(i) {
   return Math.min(62, 15 + i * 5);
 }
 export function regionLength(i) {
-  return Math.round(regionSpeed(i) * 131);
+  return Math.round(regionSpeed(i) * 210);
 }
 // regionStart[i]: where region i begins, which is where town i stands.
 export const regionStart = [0];
