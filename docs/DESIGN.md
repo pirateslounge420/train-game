@@ -147,7 +147,8 @@ A second chat built these into the same artifact on 3 Nov and they are kept in t
 ## §Z. The queue (order of work for Claude Code)
 1. Port the reference build's feel into `src/`, feature by feature, keeping the repo's module layout: §B/§L archery, §C/§M walking and phone controls, §G/§R the seeded line, climate biomes and the day, §D/§K/§N the four cars, the engine and the surge, §E/§O riders and gore (as data), §H/§T hats, §I HUD, §J/§Q look, §S the conductor, crouch, knock-off and hook. Stop and explain after each.
 2. Deploy to GitHub Pages on every push to `main`, so Mike plays from a link on his phone.
-3. The cab and firebox: the coal run continues forward from the tender, scoop then throw in the firebox.
-4. The first town stop: get off, walk one street, a store that restocks arrows.
-5. Trophies persist: the hat rack keeps its hats across runs.
-6. Co-op (§W).
+3. The first town stop: get off, walk one street, a store that restocks arrows.
+4. Trophies persist: the hat rack keeps its hats across runs.
+5. Co-op (§W).
+
+(3 Nov, Mike: "No shovel, cut §Z.3." The cab-and-firebox coal run is gone with the shovel, per §K; the old items 4–6 moved up.)
