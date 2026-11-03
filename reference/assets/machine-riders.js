@@ -1,0 +1,197 @@
+// machine-riders.js — the gangs' riders on machine horses, code-built per DESIGN.md §P, for §V's cyborg frontier.
+// One rig, many skins. Same part tree, pivots, masses and hit zones as the reference build's HORSE_RIG / RIDER_RIG (§O),
+// so hits, detachment and the gore table port unchanged; a skin only changes the pieces' materials, the poncho pattern and the bow.
+//
+// Skins (from Mike's concept frames, reference/assets/*-concept.jpg):
+//   'goldLightning'  — brass horse, green energy, green poncho with yellow bolts, brown hat, compound bow   (§E's green + yellow lightning gang)
+//   'violetChevron'  — black horse, violet energy, purple-and-black chevron poncho, black hat, recurve bow
+//
+// Use (browser):  <script src="machine-riders.js"><\/script>
+//                 const r=MachineRiders.build(THREE,{skin:'goldLightning'}); scene.add(r.root);
+//                 each frame: r.animate(phase, speedMetresPerSecond, dt, time)   (phase advances by dt*speed/2.4, as in the game)
+// Use (node):     const MR=require('./machine-riders.js').MachineRiders
+//
+// Piece grammar, in the part's own space (y up, -z forward; the rider sits facing -z):
+//   ['box', w,h,d, x,y,z, mat]    ['cyl', rTop,rBot,h, x,y,z, mat, axis('x'|'y'|'z'), segments]    ['sph', r, x,y,z, mat]    ['torus', R,tube, x,y,z, mat, arc]
+(function(root){
+'use strict';
+const PI=Math.PI;
+
+const SKINS={
+  goldLightning:{ name:'Gold Lightning', plate:0xc9a227, plate2:0x8a6a1c, under:0x1a1a1f, chrome:0x9a8a5a, accent:0x3dff8a, eye:0x9cffc4,
+    hat:0x6b3f1e, band:'poncho', bandana:0x2f9a4a, coat:0x3a2a1c, glove:0x7a4a22, boot:0x15120f, quiver:0x4a2e18, mane:0x151515,
+    poncho:{pattern:'lightning',base:'#2f8f3a',mark:'#f0d030'}, bow:'compound', bowColor:0xc9a227 },
+  violetChevron:{ name:'Violet Chevron', plate:0x1b1c25, plate2:0x272938, under:0x101117, chrome:0x7d8292, accent:0xa877ff, eye:0xc9a6ff,
+    hat:0x101117, band:0x5a2ad0, bandana:0x7b55f0, coat:0x1a1622, glove:0x101117, boot:0x14110f, quiver:0x101117, mane:0x101117,
+    poncho:{pattern:'chevron',base:'#1c1030',mark:'#8a5cf0'}, bow:'recurve', bowColor:0x6f33e8 },
+};
+
+function makeMaterials(THREE,skin){
+  const L=(c,o)=>new THREE.MeshLambertMaterial(Object.assign({color:c},o||{}));
+  const A=new THREE.Color(skin.accent), Ad=A.clone().multiplyScalar(0.36);
+  const M={};
+  for(const k of ['plate','plate2','under','chrome','hat','bandana','coat','glove','boot','quiver','mane']) M[k]=L(skin[k]);
+  M.glow=L(Ad.getHex(),{emissive:A.getHex(),emissiveIntensity:0.9});   // energy: veins, bands, hubs, bow marks
+  M.eye=new THREE.MeshBasicMaterial({color:skin.eye});                  // horse eye, goggle lenses, forehead lens: unlit, always bright
+  M.bow=L(skin.bowColor,{emissive:skin.bow==='recurve'?Ad.getHex():0x000000});
+  M.shaft=L(0xcdbf9a); M.fletch=L(parseInt(skin.poncho.mark.slice(1),16)); M.string=new THREE.MeshBasicMaterial({color:0xe8e2cf});
+  M.void=L(0x07060c);
+  M.poncho=L(0xffffff,{map:ponchoTexture(THREE,skin.poncho,2)});
+  M.band=skin.band==='poncho'?L(0xffffff,{map:ponchoTexture(THREE,skin.poncho,6)}):L(skin.band);
+  return M;
+}
+// the poncho cloth, drawn once on a canvas: chevrons or lightning bolts
+function ponchoTexture(THREE,p,repeat){
+  const c=document.createElement('canvas'); c.width=128; c.height=128; const g=c.getContext('2d');
+  g.fillStyle=p.base; g.fillRect(0,0,128,128); g.fillStyle=p.mark;
+  if(p.pattern==='chevron'){ const amp=10, step=16;
+    for(let r=0;r<4;r++){ const y0=r*32+6; g.beginPath(); g.moveTo(0,y0);
+      for(let x=0;x<=128;x+=step){ g.lineTo(x+step/2,y0+amp); g.lineTo(x+step,y0); }
+      g.lineTo(128,y0+10); for(let x=128;x>=0;x-=step){ g.lineTo(x-step/2,y0+amp+10); g.lineTo(x-step,y0+10); }
+      g.closePath(); g.fill(); }
+  } else { // bolts: a zigzag ribbon, four columns, staggered
+    for(let col=0;col<4;col++){ const x0=col*32+8+(col%2)*6, y0=(col%2)*16;
+      const pts=[[0,0],[10,0],[4,18],[12,18],[-2,44],[2,26],[-6,26]];
+      for(const yy of [y0-64,y0,y0+64]){ g.beginPath(); pts.forEach(([x,y],i)=>i?g.lineTo(x0+x,yy+y):g.moveTo(x0+x,yy+y)); g.closePath(); g.fill(); } }
+  }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(repeat,repeat);
+  t.magFilter=THREE.LinearFilter; t.minFilter=THREE.LinearMipmapLinearFilter; t.anisotropy=4;
+  return t;
+}
+
+// ---- the horse: a machine. Pivots, masses, hit zones as HORSE_RIG. ----
+const HORSE=[
+ {n:'barrel',p:null,at:[0,0,0],rot:[0,0,0],mass:160,c:[0,0,0],r:0.5,pri:13,hp:3, hit:[[0.5,0.7,1.1,0,0,0.05]],
+  pieces:[['box',0.5,0.7,1.1,0,0,0.05,'under'],['box',0.54,0.5,0.82,0,0.02,0.05,'plate'],['box',0.44,0.06,0.9,0,0.36,0.05,'plate2'],['box',0.52,0.12,0.3,0,-0.28,0.05,'under'],
+          ['box',0.012,0.03,0.7,-0.272,0.1,0.05,'glow'],['box',0.012,0.03,0.7,0.272,0.1,0.05,'glow'],
+          ['box',0.012,0.34,0.03,-0.272,-0.06,-0.25,'glow'],['box',0.012,0.34,0.03,0.272,-0.06,-0.25,'glow'],
+          ['box',0.012,0.22,0.03,-0.272,-0.12,0.32,'glow'],['box',0.012,0.22,0.03,0.272,-0.12,0.32,'glow'],
+          ['box',0.3,0.03,0.012,0,-0.2,-0.5,'glow'],['box',0.03,0.03,0.03,-0.26,0.22,-0.3,'chrome'],['box',0.03,0.03,0.03,0.26,0.22,-0.3,'chrome'],['box',0.03,0.03,0.03,-0.26,0.22,0.4,'chrome'],['box',0.03,0.03,0.03,0.26,0.22,0.4,'chrome']]},
+ {n:'croup',p:'barrel',at:[0,0.02,0.6],rot:[0,0,0],mass:70,c:[0,0,0.3],r:0.42,pri:12,hp:2, hit:[[0.46,0.6,0.6,0,0,0.3]],
+  pieces:(function(){ const p=[['box',0.46,0.6,0.6,0,0,0.3,'plate'],['box',0.4,0.05,0.5,0,0.3,0.3,'plate2'],['box',0.012,0.03,0.4,-0.233,0.18,0.3,'glow'],['box',0.012,0.03,0.4,0.233,0.18,0.3,'glow']];
+    for(const s of [-1,1]){ p.push(['cyl',0.16,0.16,0.06,s*0.25,0,0.3,'plate2','x',10]); p.push(['cyl',0.05,0.05,0.09,s*0.25,0,0.3,'glow','x',10]);
+      for(let i=0;i<8;i++){ const a=i/8*PI*2; p.push(['box',0.05,0.05,0.05,s*0.25,Math.cos(a)*0.17,0.3+Math.sin(a)*0.17,'plate2']); } } // the hip gear's teeth
+    return p; })()},
+ {n:'tail',p:'croup',at:[0,0.22,0.6],rot:[-0.5,0,0],mass:3,c:[0,0,0.3],r:0.14,pri:14,hp:1, hit:[[0.1,0.12,0.6,0,0,0.3]],
+  pieces:[['box',0.08,0.1,0.6,0,0,0.3,'mane'],['box',0.05,0.06,0.5,-0.05,-0.03,0.36,'mane'],['box',0.05,0.06,0.5,0.05,-0.03,0.36,'mane'],['box',0.04,0.05,0.3,0,-0.08,0.5,'mane']]},
+ {n:'neck1',p:'barrel',at:[0,0.28,-0.5],rot:[0.55,0,0],mass:26,c:[0,0.1,-0.2],r:0.24,pri:5,hp:1, hit:[[0.3,0.36,0.42,0,0.1,-0.2]],
+  pieces:[['box',0.3,0.36,0.42,0,0.1,-0.2,'under'],['box',0.32,0.2,0.3,0,0.14,-0.22,'plate'],['box',0.012,0.26,0.03,-0.162,0.1,-0.2,'glow'],['box',0.012,0.26,0.03,0.162,0.1,-0.2,'glow'],
+          ['box',0.06,0.16,0.14,0,0.3,-0.12,'mane'],['box',0.06,0.16,0.14,0,0.32,-0.26,'mane'],['box',0.05,0.14,0.12,0,0.28,0.0,'mane']]},
+ {n:'neck2',p:'neck1',at:[0,0.22,-0.4],rot:[0.25,0,0],mass:18,c:[0,0.08,-0.2],r:0.22,pri:4,hp:1, hit:[[0.27,0.32,0.4,0,0.08,-0.2]],
+  pieces:[['box',0.27,0.32,0.4,0,0.08,-0.2,'under'],['box',0.29,0.18,0.28,0,0.12,-0.2,'plate'],['box',0.012,0.22,0.03,-0.147,0.08,-0.2,'glow'],['box',0.012,0.22,0.03,0.147,0.08,-0.2,'glow'],
+          ['box',0.06,0.16,0.14,0,0.26,-0.14,'mane'],['box',0.05,0.14,0.12,0,0.26,-0.3,'mane']]},
+ {n:'skull',p:'neck2',at:[0,0.18,-0.38],rot:[-0.85,0,0],mass:12,c:[0,0,-0.22],r:0.28,pri:3,hp:1,
+  hit:[[0.25,0.28,0.5,0,-0.02,-0.22],[0.06,0.14,0.06,-0.08,0.18,-0.1],[0.06,0.14,0.06,0.08,0.18,-0.1]],
+  pieces:[['box',0.25,0.28,0.5,0,-0.02,-0.22,'plate'],['box',0.2,0.18,0.2,0,-0.08,-0.5,'under'],['box',0.27,0.04,0.44,0,0.1,-0.2,'plate2'],
+          ['box',0.06,0.14,0.06,-0.08,0.18,-0.1,'plate2'],['box',0.06,0.14,0.06,0.08,0.18,-0.1,'plate2'],
+          ['cyl',0.06,0.06,0.03,0,0.12,-0.26,'plate2','y',12],['cyl',0.04,0.04,0.045,0,0.12,-0.26,'eye','y',12], // the forehead lens
+          ['sph',0.045,-0.125,0.03,-0.3,'eye'],['sph',0.045,0.125,0.03,-0.3,'eye'],
+          ['box',0.24,0.025,0.22,0,0.0,-0.42,'under'],['box',0.012,0.03,0.3,-0.126,-0.06,-0.25,'glow'],['box',0.012,0.03,0.3,0.126,-0.06,-0.25,'glow']]},
+];
+for(const [L,side,par,at] of [['FL',-1,'barrel',[-0.17,-0.3,-0.42]],['FR',1,'barrel',[0.17,-0.3,-0.42]],['BL',-1,'croup',[-0.17,-0.32,0]],['BR',1,'croup',[0.17,-0.32,0]]]){
+  const back=L[0]==='B', w=back?0.14:0.13, d=back?0.15:0.14;
+  HORSE.push({n:'upper'+L,p:par,at,rot:[0,0,0],mass:back?20:18,c:[0,-0.22,0],r:0.17,pri:9,hp:1,leg:L, hit:[[w,0.45,d,0,-0.22,0]],
+    pieces:[['box',w,0.45,d,0,-0.22,0,'plate'],['cyl',0.1,0.1,0.17,0,0,0,'plate2','x',12],['cyl',0.04,0.04,0.19,0,0,0,'glow','x',10],
+            ['cyl',0.022,0.022,0.3,side*0.085,-0.2,0.07,'chrome','y',8],['box',0.012,0.3,0.02,-side*0.07,-0.22,-0.075,'glow']]});
+  HORSE.push({n:'lower'+L,p:'upper'+L,at:[0,-0.44,0],rot:[0,0,0],mass:8,c:[0,-0.24,0],r:0.15,pri:8,hp:1,leg:L, hit:[[0.11,0.44,0.12,0,-0.22,0],[0.13,0.08,0.15,0,-0.46,0]],
+    pieces:[['box',0.11,0.44,0.12,0,-0.22,0,'plate'],['cyl',0.08,0.08,0.14,0,0,0,'plate2','x',12],['cyl',0.03,0.03,0.16,0,0,0,'glow','x',10],
+            ['box',0.12,0.05,0.13,0,-0.3,0,'glow'],['box',0.12,0.05,0.13,0,-0.38,0,'plate2'],['box',0.13,0.08,0.15,0,-0.46,0,'boot']]});
+}
+
+// ---- the rider: goggles, bandana, poncho with fringe, quiver, gloves. Pivots as RIDER_RIG. ----
+const RIDER=[
+ {n:'pelvis',p:'barrel',at:[0,0.42,0.05],rot:[0,0,0],mass:14,c:[0,0.1,0],r:0.2,pri:10,hp:1, hit:[[0.36,0.2,0.3,0,0.1,0]],
+  pieces:[['box',0.36,0.2,0.3,0,0.1,0,'coat'],['box',0.37,0.05,0.31,0,0.17,0,'glove']]},
+ {n:'torso',p:'pelvis',at:[0,0.2,0],rot:[0,0,0],mass:30,c:[0,0.3,0],r:0.4,pri:11,hp:2, hit:[[0.6,0.6,0.44,0,0.3,0]],
+  pieces:(function(){ const p=[['box',0.6,0.6,0.44,0,0.3,0,'poncho']];
+    for(let x=-0.27;x<=0.271;x+=0.06){ p.push(['box',0.035,0.1,0.015,x,-0.05,-0.22,'band']); p.push(['box',0.035,0.1,0.015,x,-0.05,0.22,'band']); }
+    for(let z=-0.2;z<=0.201;z+=0.08){ p.push(['box',0.015,0.1,0.035,-0.3,-0.05,z,'band']); p.push(['box',0.015,0.1,0.035,0.3,-0.05,z,'band']); }
+    p.push(['box',0.08,0.62,0.03,0.12,0.3,-0.225,'glove']); // bandolier strap across the chest
+    p.push(['cyl',0.055,0.055,0.5,0.17,0.42,0.2,'quiver','y',8]); // quiver on the back, slung right
+    for(let i=0;i<4;i++){ const x=0.14+i*0.025, z=0.17+(i%2)*0.04; p.push(['cyl',0.007,0.007,0.34,x,0.78,z,'shaft','y',4]); p.push(['box',0.02,0.07,0.03,x,0.9,z,'fletch']); }
+    return p; })()},
+ {n:'neck',p:'torso',at:[0,0.6,0],rot:[0,0,0],mass:2,c:[0,0.06,0],r:0.12,pri:2,hp:1, hit:[[0.12,0.12,0.12,0,0.05,0]],
+  pieces:[['box',0.12,0.12,0.12,0,0.05,0,'bandana']]},
+ {n:'head',p:'neck',at:[0,0.12,0],rot:[0,0,0],mass:5,c:[0,0.1,0],r:0.16,pri:1,hp:1, hit:[[0.24,0.26,0.24,0,0.1,0],[0.28,0.15,0.28,0,0.04,0]],
+  pieces:[['box',0.24,0.26,0.24,0,0.1,0,'void'],['box',0.28,0.15,0.28,0,0.04,0,'bandana'],['box',0.1,0.18,0.06,0,-0.05,0.14,'bandana'],
+          ['box',0.26,0.05,0.26,0,0.15,0,'glove'],
+          ['cyl',0.06,0.06,0.035,-0.065,0.15,-0.125,'plate2','z',12],['cyl',0.06,0.06,0.035,0.065,0.15,-0.125,'plate2','z',12],
+          ['cyl',0.045,0.045,0.04,-0.065,0.15,-0.13,'eye','z',12],['cyl',0.045,0.045,0.04,0.065,0.15,-0.13,'eye','z',12]]},
+ {n:'hat',p:'head',at:[0,0.22,0],rot:[-0.3,0,0],mass:0.5,c:[0,0.12,0],r:0.14,pri:0,hp:1, hit:[[0.4,0.28,0.4,0,0.18,0]],
+  pieces:[['cyl',0.46,0.46,0.04,0,0,0,'hat','y',14],['cyl',0.2,0.24,0.3,0,0.17,0,'hat','y',12],['cyl',0.245,0.245,0.06,0,0.06,0,'band','y',12]]},
+ {n:'upperArmL',p:'torso',at:[-0.3,0.5,0],rot:[-1.3,0,0.3],mass:4,c:[0,-0.15,0],r:0.12,pri:6,hp:1,arm:true, hit:[[0.1,0.3,0.1,0,-0.15,0]],
+  pieces:[['box',0.1,0.3,0.1,0,-0.15,0,'poncho']]},
+ {n:'lowerArmL',p:'upperArmL',at:[0,-0.3,0],rot:[0.2,0,0],mass:3,c:[0,-0.15,0],r:0.11,pri:6,hp:1,arm:true,bow:true, hit:[[0.09,0.3,0.09,0,-0.15,0]],
+  pieces:[['box',0.09,0.3,0.09,0,-0.15,0,'coat'],['box',0.1,0.08,0.1,0,-0.3,0,'glove'],['box',0.105,0.03,0.105,0,-0.25,0,'glow']]},
+ {n:'upperArmR',p:'torso',at:[0.3,0.5,0],rot:[-1.0,0,-0.7],mass:4,c:[0,-0.15,0],r:0.12,pri:6,hp:1,arm:true, hit:[[0.1,0.3,0.1,0,-0.15,0]],
+  pieces:[['box',0.1,0.3,0.1,0,-0.15,0,'poncho']]},
+ {n:'lowerArmR',p:'upperArmR',at:[0,-0.3,0],rot:[-1.2,0,0],mass:3,c:[0,-0.15,0],r:0.11,pri:6,hp:1,arm:true, hit:[[0.09,0.3,0.09,0,-0.15,0]],
+  pieces:[['box',0.09,0.3,0.09,0,-0.15,0,'coat'],['box',0.1,0.08,0.1,0,-0.3,0,'glove'],['box',0.105,0.03,0.105,0,-0.25,0,'glow']]},
+ {n:'upperLegL',p:'pelvis',at:[-0.18,0,0],rot:[-1.2,0,0.3],mass:10,c:[0,-0.2,0],r:0.14,pri:7,hp:1,rleg:true, hit:[[0.13,0.4,0.13,0,-0.2,0]],
+  pieces:[['box',0.13,0.4,0.13,0,-0.2,0,'coat']]},
+ {n:'lowerLegL',p:'upperLegL',at:[0,-0.4,0],rot:[1.5,0,0],mass:5,c:[0,-0.2,0],r:0.12,pri:7,hp:1,rleg:true, hit:[[0.11,0.4,0.11,0,-0.2,0],[0.12,0.1,0.2,0,-0.42,-0.03]],
+  pieces:[['box',0.11,0.4,0.11,0,-0.2,0,'coat'],['box',0.115,0.05,0.115,0,-0.3,0,'glow'],['box',0.12,0.1,0.2,0,-0.42,-0.03,'boot']]},
+ {n:'upperLegR',p:'pelvis',at:[0.18,0,0],rot:[-1.2,0,-0.3],mass:10,c:[0,-0.2,0],r:0.14,pri:7,hp:1,rleg:true, hit:[[0.13,0.4,0.13,0,-0.2,0]],
+  pieces:[['box',0.13,0.4,0.13,0,-0.2,0,'coat']]},
+ {n:'lowerLegR',p:'upperLegR',at:[0,-0.4,0],rot:[1.5,0,0],mass:5,c:[0,-0.2,0],r:0.12,pri:7,hp:1,rleg:true, hit:[[0.11,0.4,0.11,0,-0.2,0],[0.12,0.1,0.2,0,-0.42,-0.03]],
+  pieces:[['box',0.11,0.4,0.11,0,-0.2,0,'coat'],['box',0.115,0.05,0.115,0,-0.3,0,'glow'],['box',0.12,0.1,0.2,0,-0.42,-0.03,'boot']]},
+];
+const GALLOP={FL:0.5,FR:0.62,BL:0.0,BR:0.12};
+
+function addPiece(THREE,M,g,pc){
+  let geo, m;
+  if(pc[0]==='box'){ geo=new THREE.BoxGeometry(pc[1],pc[2],pc[3]); m=new THREE.Mesh(geo,M[pc[7]]); m.position.set(pc[4],pc[5],pc[6]); }
+  else if(pc[0]==='cyl'){ geo=new THREE.CylinderGeometry(pc[1],pc[2],pc[3],pc[9]||12); m=new THREE.Mesh(geo,M[pc[7]]); m.position.set(pc[4],pc[5],pc[6]);
+    if(pc[8]==='x') m.rotation.z=PI/2; else if(pc[8]==='z') m.rotation.x=PI/2; }
+  else if(pc[0]==='sph'){ geo=new THREE.SphereGeometry(pc[1],10,8); m=new THREE.Mesh(geo,M[pc[5]]); m.position.set(pc[2],pc[3],pc[4]); }
+  else if(pc[0]==='torus'){ geo=new THREE.TorusGeometry(pc[1],pc[2],6,16,pc[7]||PI*2); m=new THREE.Mesh(geo,M[pc[6]]); m.position.set(pc[3],pc[4],pc[5]); }
+  if(!M[pc[0]==='sph'?pc[5]:pc[0]==='torus'?pc[6]:pc[7]]) throw new Error('no material '+(pc[0]==='sph'?pc[5]:pc[0]==='torus'?pc[6]:pc[7]));
+  g.add(m); return m;
+}
+function buildRig(THREE,M,defs,parts){
+  for(const d of defs){
+    const g=new THREE.Group(); g.position.set(d.at[0],d.at[1],d.at[2]); g.rotation.set(d.rot[0],d.rot[1],d.rot[2]);
+    for(const pc of d.pieces) addPiece(THREE,M,g,pc);
+    parts[d.n]={def:d,g,hp:d.hp,on:true,name:d.n};
+    if(d.p&&parts[d.p]) parts[d.p].g.add(g);
+  }
+}
+// the bow in the left hand: a recurve (violet frame) or a compound with cams and cables (gold frame)
+function buildBow(THREE,M,skin,bowG){
+  if(skin.bow==='compound'){
+    addPiece(THREE,M,bowG,['box',0.07,0.1,0.26,0,0,-0.1,'bow']); // riser
+    for(const s of [-1,1]){ const limb=addPiece(THREE,M,bowG,['box',0.05,0.02,0.36,s*0.24,0,-0.28,'bow']); limb.rotation.y=-s*0.45;
+      addPiece(THREE,M,bowG,['cyl',0.085,0.085,0.025,s*0.44,0,-0.2,'plate2','y',12]); addPiece(THREE,M,bowG,['cyl',0.03,0.03,0.035,s*0.44,0,-0.2,'glow','y',10]); // the cams
+      addPiece(THREE,M,bowG,['box',0.012,0.012,0.08,s*0.3,0,-0.3,'glow']); }
+    const s1=addPiece(THREE,M,bowG,['cyl',0.004,0.004,0.9,0,0,-0.12,'string','y',3]); s1.rotation.x=PI/2;
+    for(const s of [-1,1]){ const c=addPiece(THREE,M,bowG,['cyl',0.003,0.003,0.46,s*0.22,0.02,-0.2,'string','y',3]); c.rotation.x=PI/2; c.rotation.z=s*0.05; }
+  } else {
+    const bow=addPiece(THREE,M,bowG,['torus',0.42,0.025,0,0,0,'bow',PI]); bow.rotation.set(PI/2,0,0);
+    addPiece(THREE,M,bowG,['box',0.06,0.12,0.05,0,0,-0.42,'glove']);
+    for(const s of [-1,1]){ const z=addPiece(THREE,M,bowG,['box',0.02,0.014,0.09,s*0.3,0,-0.29,'glow']); z.rotation.y=s*0.5; addPiece(THREE,M,bowG,['box',0.02,0.014,0.07,s*0.22,0,-0.34,'glow']); }
+    const str=addPiece(THREE,M,bowG,['cyl',0.004,0.004,0.84,0,0,0,'string','y',3]); str.rotation.x=PI/2;
+  }
+}
+// returns {root, horse, rider, parts, hat, cape, bow, animate, materials, skin}
+function build(THREE,opts){
+  opts=opts||{}; const skin=typeof opts.skin==='string'?SKINS[opts.skin]:(opts.skin||SKINS.goldLightning);
+  const M=opts.materials||makeMaterials(THREE,skin);
+  const root=new THREE.Group(); const horse=new THREE.Group(); horse.position.y=1.15; root.add(horse);
+  const parts={}; buildRig(THREE,M,HORSE,parts); horse.add(parts.barrel.g);
+  buildRig(THREE,M,RIDER,parts);
+  const cape=new THREE.Group(); cape.position.set(0,0.58,0.2); parts.torso.g.add(cape); addPiece(THREE,M,cape,['box',0.56,0.02,0.75,0,0,0.375,'poncho']);
+  const bowG=new THREE.Group(); bowG.position.set(0,-0.32,0); parts.lowerArmL.g.add(bowG); buildBow(THREE,M,skin,bowG);
+  if(opts.side>0) root.scale.x=-1;
+  function animate(ph,spd,dt,time){
+    const P=parts, a=Math.min(1,spd/3);
+    for(const L of ['FL','FR','BL','BR']){ const o=ph+GALLOP[L]*2*PI, front=L[0]==='F'; const up=P['upper'+L], lo=P['lower'+L];
+      if(up.on) up.g.rotation.x=Math.sin(o)*(front?0.75:0.85)*a;
+      if(lo.on){ const fold=Math.max(0,Math.sin(o+1.0))*a; lo.g.rotation.x=front?-fold*1.1:fold*0.9; } }
+    horse.position.y=1.15+(0.09*Math.sin(2*ph+0.5)+0.04)*a; horse.rotation.x=0.07*Math.sin(ph+1.0)*a;
+    if(P.neck1.on) P.neck1.g.rotation.x=0.55+0.08*Math.sin(ph)*a; if(P.tail.on) P.tail.g.rotation.x=-0.5+0.25*Math.sin(ph*0.5)*a;
+    cape.rotation.x=1.35-Math.min(0.95,spd*0.045)+0.12*Math.sin((time||0)*7+ph)+0.06*Math.sin((time||0)*11.3);
+  }
+  return {root,horse,rider:parts.pelvis.g,parts,hat:parts.hat.g,cape,bow:bowG,animate,materials:M,skin};
+}
+root.MachineRiders={SKINS,HORSE,RIDER,GALLOP,build,makeMaterials,ponchoTexture};
+})(typeof module!=='undefined'&&module.exports?module.exports:window);

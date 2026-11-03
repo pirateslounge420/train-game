@@ -1,5 +1,9 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (evening) — Claude (chat): machine riders, one rig with skins
+- `reference/assets/machine-riders.js` replaces `rider-violet-chevron.js` (an hour old, nothing used it): one machine-horse rider rig with skins. Two skins from Mike's frames (`gold-lightning-concept.jpg`, `violet-chevron-concept.jpg`): **Gold Lightning** (brass horse, green energy, green poncho with yellow bolts, brown hat with a bolt band, brass goggles, compound bow with cams and cables: §E's green + yellow lightning gang) and **Violet Chevron** (black horse, violet energy, chevron poncho, recurve). Same 27-part tree, pivots, masses and hit boxes as the game (checked by script, both skins). Hip gears with teeth, forehead lens, bandolier, fringe. `viewer-machine-riders.html` is the turntable with a skin switch.
+- A skin is a palette plus a poncho pattern (chevron or lightning, drawn on a canvas) plus a bow type. The other two gangs (waves, stars) are a skin entry each when Mike sends their frames.
+- Found while inlining: a `</script>` inside a JS comment ended the viewer's script early. Fixed.
 ## 2026-11-03 (evening) — Claude Code: §Z.1 step 9, the conductor, crouch and knock-off (§S); end of the port
 - Mike confirmed §S's conductor, crouch and knock-off, without the hook, which §X replaced with the magnet hand (§Z.6). **Claude (chat): §S can be locked with that.**
 - Crouch: Shift, or a Crouch button that stays down until tapped again. Eye 0.72 m, half speed, no sprint or jump, and your hit ball shrinks as in the reference.
