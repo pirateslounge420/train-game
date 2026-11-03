@@ -1,5 +1,11 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (evening) — Claude (chat): reference build 0.7, design §U
+- `reference/train-game-prototype-0.7.html`. Mike's playtest of 0.6: bow should be snappier like Minecraft; arrows still pass through riders; the comet tail is too fat for how precise the shot is; a dismounted rider should recover, run at you and get a couple of hail-mary shots off.
+- Bow: zoom 7° not 16°, no look slowdown while drawing, a kick on release, instant re-nock (§U). Hitboxes: the parts' own painted boxes, padded 3–9 cm, tested in the part's frame; hat crown only (§U). Trail: a thread, 3 cm to 4 mm, 12 segments (§U). Dismounted riders: footmen who get up, run, fire 2–3 wild shots, flee; any hit finishes them (§U).
+- Bugs found by a transform-aware simulator (the old one ignored rotations): hat shots never registered in 0.6 (`hatOn` was never set), `worldOf` was undefined in `shootHat`, fled riders never despawned and blocked spawns. All fixed.
+- Next for Claude Code: still §Z item 1, now from the 0.7 reference.
+
 ## 2026-11-03 (afternoon) — Claude (chat): reference build 0.6, design §K–§T
 - `reference/train-game-prototype-0.6.html`. Merged with a parallel chat session's 0.6 (conductor, crouch, parapets, knock-off, hook, water stops: §S, unconfirmed) rather than overwrite it.
 - Mike's 0.6 list, all in: steam is the player's call, three stacking surges from the tender to 200 mph, no shovel (§K); stretches 25 % longer; aim fix with the Torchfire draw curve, the arrow from the bow in hand, smaller reticle, bow carried right (§L); sprint by double-tap, smooth car crossings (§M); 8 ft drivers and the exhaust beat and horn (§N); the full anatomy rig with the gore table (§O); the asset standard (§P); less low-poly (§Q); Torchfire's 144-minute day and seeded, climate-picked generation (§R); wearable hats (§T).
