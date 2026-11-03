@@ -44,6 +44,11 @@ export class Input {
     this.dx = this.dy = 0;
   }
 
+  // Is the bow's draw button held? (Touch controls will add to this.)
+  drawHeld() {
+    return this.mouse[0];
+  }
+
   down(code) {
     return this.keys.has(code);
   }

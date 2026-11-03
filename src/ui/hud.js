@@ -7,7 +7,8 @@ export class Hud {
     this.healthFill = $('health-fill');
     this.arrowCount = $('arrow-count');
     this.stats = $('stats');
-    this.hitmarker = $('hitmarker');
+    this.cross = $('cross');
+    this.hitT = 0;
     this.callout = $('callout');
     this.feed = $('feed');
     this.vignette = $('vignette');
@@ -15,7 +16,11 @@ export class Hud {
     this.lastArrows = -1;
   }
 
-  update(game) {
+  update(game, dt) {
+    if (this.hitT > 0) {
+      this.hitT -= dt;
+      if (this.hitT <= 0) this.cross.classList.remove('hit', 'big');
+    }
     const p = game.player;
     this.healthFill.style.width = `${(p.health / CONFIG.player.maxHealth) * 100}%`;
     this.healthFill.classList.toggle('low', p.health < 30);
@@ -34,10 +39,11 @@ export class Hud {
   }
 
   hitFeedback(kind, text) {
-    const hm = this.hitmarker;
-    hm.className = '';
-    void hm.offsetWidth; // restart the animation
-    hm.className = `show ${kind}`;
+    // Flash the X through the crosshair; brass and a little longer for a headshot.
+    const big = kind === 'headshot';
+    this.hitT = big ? 0.32 : 0.2;
+    this.cross.classList.add('hit');
+    this.cross.classList.toggle('big', big);
     if (kind === 'headshot' || kind === 'kill') {
       const c = this.callout;
       c.textContent = text;

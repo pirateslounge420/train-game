@@ -6,47 +6,108 @@ import { groundHeight } from '../world/terrain.js';
 
 // Every arrow in flight, and every arrow stuck in something.
 //
-// Flight is plain physics: the arrow keeps its velocity and gravity pulls
-// it down (no drag, no speed-ups). Each frame we trace the little line
-// segment it travelled through and check what it hit first.
+// Flight is plain physics (§B): the arrow keeps its velocity, gravity pulls
+// it down and a tiny bit of air drag slows it. Each frame we trace the
+// short line segment it travelled and check what it hit first.
 
 const Z = new THREE.Vector3(0, 0, 1);
-const LENGTH = 0.78;
+const LENGTH = 0.9; // tip to nock, as in reference 0.7
+const EMBED = 0.2; // how far the tip sinks into what it hits
 const MAX_STUCK_IN_TRAIN = 70;
-const TRAIL_POINTS = 10;
+const TRAIL_N = 12; // a thread, not a comet (§U)
 
+// The arrow points along +Z with its tip at the origin.
 const geo = {
-  shaft: new THREE.CylinderGeometry(0.011, 0.011, LENGTH, 5).rotateX(Math.PI / 2).translate(0, 0, -LENGTH / 2),
-  head: new THREE.ConeGeometry(0.025, 0.09, 4).rotateX(Math.PI / 2).translate(0, 0, -0.03),
-  fletch: new THREE.BoxGeometry(0.004, 0.05, 0.14).translate(0, 0.03, -LENGTH + 0.1),
+  shaft: new THREE.CylinderGeometry(0.013, 0.013, 0.8, 5).rotateX(Math.PI / 2).translate(0, 0, -0.5),
+  head: new THREE.ConeGeometry(0.035, 0.12, 4).rotateX(Math.PI / 2).translate(0, 0, -0.06),
+  fletchA: new THREE.BoxGeometry(0.004, 0.07, 0.11).translate(0, 0.035, -0.83),
+  fletchB: new THREE.BoxGeometry(0.07, 0.004, 0.11).translate(0.035, 0, -0.83),
 };
 const mats = {
-  shaft: flat(0xb08850),
-  head: flat(0x3a3a3a, { metalness: 0.6, roughness: 0.4 }),
-  playerFletch: flat(0xf2efe6),
-  enemyFletch: flat(0xb02a22),
+  shaft: flat(0xc9b48a),
+  head: flat(0x3a3a3a),
+  playerFletch: flat(0xf1efe6),
+  enemyFletch: flat(0xc83c2c),
 };
 
 function makeArrowMesh(owner) {
-  // The arrow points along +Z with its tip at the origin.
   const g = new THREE.Group();
-  g.add(new THREE.Mesh(geo.shaft, mats.shaft), new THREE.Mesh(geo.head, mats.head));
   const fm = owner === 'player' ? mats.playerFletch : mats.enemyFletch;
-  for (let i = 0; i < 3; i++) {
-    const f = new THREE.Mesh(geo.fletch, fm);
-    f.rotation.z = (i / 3) * Math.PI * 2;
-    g.add(f);
-  }
+  g.add(
+    new THREE.Mesh(geo.shaft, mats.shaft),
+    new THREE.Mesh(geo.head, mats.head),
+    new THREE.Mesh(geo.fletchA, fm),
+    new THREE.Mesh(geo.fletchB, fm),
+  );
   g.traverse((o) => o.isMesh && (o.castShadow = true));
   return g;
+}
+
+// The trail: a thin glowing ribbon through the arrow's last few positions,
+// 3 cm wide at the arrow fading to 4 mm. Pale blue-white for yours,
+// orange-red for theirs.
+const trailMat = new THREE.MeshBasicMaterial({
+  vertexColors: true,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  side: THREE.DoubleSide,
+  fog: false,
+});
+
+function makeTrail(owner, pos) {
+  const n = TRAIL_N;
+  const col = new Float32Array(n * 2 * 3);
+  const br = owner === 'player' ? [0.7, 0.8, 0.85] : [0.9, 0.38, 0.2];
+  for (let i = 0; i < n; i++) {
+    const f = Math.pow(1 - i / (n - 1), 1.6);
+    for (let j = 0; j < 2; j++) col.set([br[0] * f, br[1] * f, br[2] * f], (i * 2 + j) * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 2 * 3), 3).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const idx = [];
+  for (let i = 0; i < n - 1; i++) {
+    const a = i * 2;
+    idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+  }
+  g.setIndex(idx);
+  const mesh = new THREE.Mesh(g, trailMat);
+  mesh.frustumCulled = false;
+  const pts = [];
+  for (let i = 0; i < n; i++) pts.push(pos.clone());
+  return { mesh, pts, count: 1 };
+}
+
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
+function updateTrail(tr, p, eye) {
+  const n = TRAIL_N;
+  for (let i = Math.min(tr.count, n - 1); i > 0; i--) tr.pts[i].copy(tr.pts[i - 1]);
+  tr.pts[0].copy(p);
+  if (tr.count < n) tr.count++;
+  const arr = tr.mesh.geometry.attributes.position.array;
+  for (let i = 0; i < n; i++) {
+    const q = tr.pts[Math.min(i, tr.count - 1)];
+    const a = tr.pts[Math.max(0, Math.min(i - 1, tr.count - 1))];
+    const b = tr.pts[Math.min(i + 1, tr.count - 1)];
+    // Spread the ribbon sideways, square on to the camera.
+    _a.subVectors(a, b);
+    if (_a.lengthSq() < 1e-8) _a.set(0, 1, 0);
+    _b.subVectors(q, eye);
+    _c.crossVectors(_a, _b);
+    if (_c.lengthSq() < 1e-8) _c.set(1, 0, 0);
+    _c.normalize();
+    const w = 0.004 + 0.026 * (1 - i / (n - 1));
+    arr.set([q.x + _c.x * w, q.y + _c.y * w, q.z + _c.z * w, q.x - _c.x * w, q.y - _c.y * w, q.z - _c.z * w], i * 6);
+  }
+  tr.mesh.geometry.attributes.position.needsUpdate = true;
 }
 
 export class ArrowSystem {
   constructor(game) {
     this.game = game;
     this.flying = [];
-    this.stuck = []; // { mesh, where: 'train'|'ground'|'body', age }
-    this.trailMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 });
+    this.stuck = []; // { mesh, where: 'train'|'ground', age }
   }
 
   // pos: where the tip starts (world). vel: world velocity.
@@ -54,16 +115,10 @@ export class ArrowSystem {
     const mesh = makeArrowMesh(owner);
     mesh.position.copy(pos);
     this.game.scene.add(mesh);
-    const a = { mesh, pos: pos.clone(), vel: vel.clone(), owner, age: 0, trail: null };
-    if (owner === 'player') {
-      const tg = new THREE.BufferGeometry();
-      const arr = new Float32Array(TRAIL_POINTS * 3);
-      for (let i = 0; i < TRAIL_POINTS; i++) arr.set([pos.x, pos.y, pos.z], i * 3);
-      tg.setAttribute('position', new THREE.BufferAttribute(arr, 3));
-      a.trail = new THREE.Line(tg, this.trailMat);
-      a.trail.frustumCulled = false;
-      this.game.scene.add(a.trail);
-    }
+    // `fresh`: it was spawned from where things are *after* this frame's
+    // move, so it skips one step instead of moving twice.
+    const a = { mesh, pos: pos.clone(), vel: vel.clone(), owner, age: 0, fresh: true, trail: makeTrail(owner, pos) };
+    this.game.scene.add(a.trail.mesh);
     this.orient(a);
     this.flying.push(a);
   }
@@ -75,10 +130,8 @@ export class ArrowSystem {
 
   removeFlying(i) {
     const a = this.flying[i];
-    if (a.trail) {
-      this.game.scene.remove(a.trail);
-      a.trail.geometry.dispose();
-    }
+    this.game.scene.remove(a.trail.mesh);
+    a.trail.mesh.geometry.dispose();
     this.flying.splice(i, 1);
   }
 
@@ -89,26 +142,25 @@ export class ArrowSystem {
 
     for (let i = this.flying.length - 1; i >= 0; i--) {
       const a = this.flying[i];
+      if (a.fresh) {
+        a.fresh = false;
+        continue;
+      }
       const p0 = a.pos.clone();
       a.vel.y -= g * dt;
+      const sp = a.vel.length();
+      if (sp > 0) a.vel.multiplyScalar(Math.max(0, 1 - CONFIG.bow.drag * sp * dt));
       a.pos.addScaledVector(a.vel, dt);
       a.age += dt;
-      const hit = this.trace(p0, a.pos, trainPrev, a);
+      const hit = this.trace(p0, a.pos, trainPrev, a, dt);
       if (hit) {
         this.resolveHit(a, hit, p0);
         this.removeFlying(i);
         continue;
       }
       this.orient(a);
-      if (a.trail) {
-        const arr = a.trail.geometry.attributes.position.array;
-        arr.copyWithin(3, 0, (TRAIL_POINTS - 1) * 3);
-        arr[0] = a.pos.x;
-        arr[1] = a.pos.y;
-        arr[2] = a.pos.z;
-        a.trail.geometry.attributes.position.needsUpdate = true;
-      }
-      if (a.age > 12) {
+      updateTrail(a.trail, a.pos, this.game.camera.position);
+      if (a.age > CONFIG.bow.life) {
         this.game.scene.remove(a.mesh);
         this.removeFlying(i);
       }
@@ -118,7 +170,7 @@ export class ArrowSystem {
     for (let i = this.stuck.length - 1; i >= 0; i--) {
       const s = this.stuck[i];
       s.age += dt;
-      if (s.where === 'ground' && (s.mesh.position.z > train.position.z + 300 || s.age > 60)) {
+      if (s.where === 'ground' && s.age > CONFIG.bow.groundTime) {
         this.game.scene.remove(s.mesh);
         this.stuck.splice(i, 1);
       }
@@ -128,7 +180,7 @@ export class ArrowSystem {
   }
 
   // Find the first thing the segment p0->p1 hits.
-  trace(p0, p1, trainPrev, a) {
+  trace(p0, p1, trainPrev, a, dt) {
     const { train, player, bandits } = this.game;
     let best = null;
     const consider = (h) => {
@@ -157,7 +209,7 @@ export class ArrowSystem {
       }
     }
 
-    if (a.owner === 'player') consider(bandits.trace(p0, p1));
+    if (a.owner === 'player') consider(bandits.trace(p0, p1, dt));
     return best;
   }
 
@@ -169,7 +221,7 @@ export class ArrowSystem {
     if (hit.type === 'train') {
       // Stick into the train, in train space, so it rides along with us.
       const rel = hit.r1.clone().sub(hit.r0).normalize();
-      const local = hit.r0.clone().lerp(hit.r1, hit.t).addScaledVector(rel, 0.1);
+      const local = hit.r0.clone().lerp(hit.r1, hit.t).addScaledVector(rel, EMBED);
       a.mesh.position.copy(local);
       a.mesh.quaternion.setFromUnitVectors(Z, rel);
       scene.remove(a.mesh);
@@ -179,7 +231,7 @@ export class ArrowSystem {
       if (inTrain.length > MAX_STUCK_IN_TRAIN) this.removeStuck(inTrain[0]);
       sound.thunk(point, player);
     } else if (hit.type === 'ground') {
-      a.mesh.position.copy(point).addScaledVector(dir, 0.15);
+      a.mesh.position.copy(point).addScaledVector(dir, EMBED);
       a.mesh.quaternion.setFromUnitVectors(Z, dir);
       this.stuck.push({ mesh: a.mesh, where: 'ground', age: 0 });
     } else if (hit.type === 'player') {
@@ -192,7 +244,7 @@ export class ArrowSystem {
       // Stick into the horse or rider so it travels with them.
       const part = hit.part;
       part.updateMatrixWorld(true);
-      const local = part.worldToLocal(point.clone().addScaledVector(dir, 0.12));
+      const local = part.worldToLocal(point.clone().addScaledVector(dir, EMBED));
       const q = part.getWorldQuaternion(new THREE.Quaternion()).invert();
       a.mesh.position.copy(local);
       a.mesh.quaternion.setFromUnitVectors(Z, dir).premultiply(q);

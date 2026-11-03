@@ -22,6 +22,7 @@ export class Player {
     this.deathReason = '';
     this.sinceHurt = 99;
     this.bob = 0;
+    this.shake = 0; // camera shake, e.g. from loosing an arrow
   }
 
   // World-space position of the feet / eyes / chest.
@@ -152,6 +153,7 @@ export class Player {
   updateHealth(dt) {
     if (this.dead) return;
     this.sinceHurt += dt;
+    this.shake = Math.max(0, this.shake - dt * 1.6);
     if (this.sinceHurt > C.regenDelay) this.health = Math.min(C.maxHealth, this.health + C.regenPerSecond * dt);
   }
 
@@ -177,6 +179,10 @@ export class Player {
     camera.position.y += Math.sin(this.bob) * 0.035;
     // Tiny rail vibration.
     camera.position.y += Math.sin(time * 37) * 0.004 + Math.sin(time * 23.3) * 0.003;
+    if (this.shake > 0) {
+      camera.position.x += (Math.random() - 0.5) * this.shake * 0.08;
+      camera.position.y += (Math.random() - 0.5) * this.shake * 0.08;
+    }
     camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
   }
 }

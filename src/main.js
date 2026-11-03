@@ -47,7 +47,7 @@ const player = new Player(train);
 const game = { scene, camera, train, player, sound, hud, terrain };
 game.arrows = new ArrowSystem(game);
 game.bandits = new BanditManager(game);
-game.bow = new Bow(game);
+player.bow = new Bow(game, player); // each player carries their own bow (§W)
 
 // ---- start / pause / death screens -----------------------------------------
 const overlay = document.getElementById('overlay');
@@ -142,13 +142,13 @@ function update(dt) {
   player.update(dt / 2, input);
   player.applyCamera(camera, time);
   camera.updateMatrixWorld();
-  game.bow.update(dt, input);
+  player.bow.update(dt, input);
   game.bandits.update(dt);
   game.arrows.update(dt);
   smoke.update(dt, train);
   player.updateHealth(dt);
   trainSounds(dt);
-  hud.update(game);
+  hud.update(game, dt);
   if (player.dead) showDeath();
 }
 
@@ -159,9 +159,16 @@ function render(dt) {
   sun.position.copy(eye).addScaledVector(SKY.sunDir, 120);
   sky.position.copy(camera.position);
 
+  // Ease the zoom toward what the bow wants (narrower as it draws).
+  const fov = player.bow.fov(camera);
+  if (Math.abs(camera.fov - fov) > 0.01) {
+    camera.fov += (fov - camera.fov) * 0.25;
+    camera.updateProjectionMatrix();
+  }
+
   renderer.clear();
   renderer.render(scene, camera);
-  game.bow.render(renderer, camera, dt);
+  player.bow.render(renderer, camera, dt);
 }
 
 addEventListener('resize', () => {

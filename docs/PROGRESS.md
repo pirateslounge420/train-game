@@ -1,5 +1,17 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (night) — Claude Code: §Z.1 step 1, archery and hitboxes (§B, §L, §U)
+- Ported from reference 0.7 into `src/combat/bow.js`, `src/combat/arrows.js`, `src/config.js`: draw over 1 s on the (t² + 2t) / 3 curve; a draw under 0.1 looses nothing; 45 m/s snap to 80 m/s full; the zeroed sight (the arrow leaves the bow in hand and meets the crosshair at 15–35 m, nose-up by the `fire()` formula); instant re-nock; kick on release; 7° zoom; 72° / 84° (portrait) base view; tiny drag; 40 s arrow life; 5 s in the ground; arrows inherit the train's velocity only; 20 to start, 40 cap; the reference's arrow model and bow rig numbers.
+- Trails: the 12-segment additive thread (3 cm to 4 mm) on every arrow, blue-white yours, orange-red theirs (§B, §U).
+- Crosshair: the reference's 52 px open cross with the hit X; brass on headshots (§B, §L).
+- Hitboxes (§U): every painted box of the repo's current horse and rider is a padded hit box (7 cm bodies, 9 cm limbs), tested in that part's own frame, with the arrow's path shifted by the rider's movement that frame; near-ties within 0.3 m go to the lower priority (head first). The parts still map to the old four zones until the anatomy rig (§O) is ported. Hats are not hittable yet (§H).
+- Measured in the browser: the arrow crosses the crosshair line at the zero distance within 3 cm (snap) and 6 cm (full). Perfect-lead full-draw shots at galloping riders: 27 of 37 head, 27 of 37 torso, 25 of 37 leg (reference simulator: about 2/3, 7/10, 5/6).
+- Fixed: a new arrow moved one extra frame of train travel on the frame it was loosed, landing it ~20 cm ahead of the aim.
+- Removed: right-click to cancel a draw (not in the reference; right-click is Grab in §C).
+- Per-player (§W): the bow now belongs to a player (`player.bow`), and the draw button is read through `input.drawHeld()` so touch can feed it.
+- Not yet: touch controls (next, §C/§M), so the repo build still can't be played on a phone. Enemy aim and damage to you are unchanged until the riders step (§E).
+- Open question for Mike: the branch `grapple-stagger-conductor` on GitHub (commit ff6ad45, crouch, knock-off, hook, conductor, stops) was built on the first prototype by another session and never merged. Keep, port its ideas when §S comes up, or delete?
+
 ## 2026-11-03 (evening) — Claude (chat): reference build 0.7, design §U
 - `reference/train-game-prototype-0.7.html`. Mike's playtest of 0.6: bow should be snappier like Minecraft; arrows still pass through riders; the comet tail is too fat for how precise the shot is; a dismounted rider should recover, run at you and get a couple of hail-mary shots off.
 - Bow: zoom 7° not 16°, no look slowdown while drawing, a kick on release, instant re-nock (§U). Hitboxes: the parts' own painted boxes, padded 3–9 cm, tested in the part's frame; hat crown only (§U). Trail: a thread, 3 cm to 4 mm, 12 segments (§U). Dismounted riders: footmen who get up, run, fire 2–3 wild shots, flee; any hit finishes them (§U).

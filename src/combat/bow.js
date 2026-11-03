@@ -1,155 +1,168 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { flat } from '../core/materials.js';
-import { lerp, placeBetween } from '../core/math.js';
+import { clamp, placeBetween } from '../core/math.js';
 
 const B = CONFIG.bow;
 
-// The bow you hold. Hold the left mouse button to draw (power builds up to
-// full draw in ~0.55 s), let go to loose the arrow. Right-click cancels.
+// The bow in one player's hands (§B, §L, §U; numbers from reference 0.7).
+//
+// Hold the draw button: the draw builds over one second on the Torchfire /
+// Minecraft curve. Let go to loose. The next draw can start straight away.
+// The arrow leaves the bow in your hand and is aimed to cross the
+// crosshair line at the "zero" distance (15 m snap shot, 35 m full draw),
+// tipped nose-up just enough that gravity drops it onto the crosshair
+// there. Closer than that it lands a touch high, further away it drops.
 //
 // The bow is drawn in its own little scene on top of the world so it
 // never pokes through walls.
 export class Bow {
-  constructor(game) {
+  constructor(game, player) {
     this.game = game;
-    this.state = 'ready'; // ready | drawing | reloading
-    this.draw = 0; // 0..1
-    this.shown = 0; // smoothed draw for animation
-    this.reload = 0;
+    this.player = player;
+    this.drawing = false;
+    this.drawT = 0; // seconds held, capped at full draw
+    this.kick = 0; // jumps on release, settles over a few frames
+    this.baseFov = CONFIG.view.fov;
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(CONFIG.view.fov, 1, 0.01, 10);
-    this.scene.add(new THREE.HemisphereLight(0xfff1dc, 0x6b4a30, 1.6));
+    this.scene.add(new THREE.HemisphereLight(0xfff1dc, 0x283c8a, 1.6));
     const sun = new THREE.DirectionalLight(0xffe2b8, 1.6);
     sun.position.set(0.5, 1, 0.3);
     this.scene.add(sun);
     this.buildModel();
   }
 
+  // Power 0..1 from how long the draw has been held.
+  power() {
+    const t = this.drawT / B.fullDrawTime;
+    return Math.min(1, (t * t + 2 * t) / 3);
+  }
+
   buildModel() {
-    const wood = flat(0x6b3f20);
-    const grip = flat(0x3b2616);
-    const stringMat = flat(0xe8e0cc);
-    this.root = new THREE.Group();
-    this.root.scale.setScalar(0.75);
-    this.scene.add(this.root);
+    // Positions in camera space, as in the reference build's bow rig.
+    this.rig = new THREE.Group();
+    this.scene.add(this.rig);
+    const arc = new THREE.TorusGeometry(0.42, 0.02, 4, 14, Math.PI).toNonIndexed();
+    arc.computeVertexNormals();
+    const bow = new THREE.Mesh(arc, flat(0x4a2e1a));
+    bow.rotation.set(0, -Math.PI / 2, Math.PI / 2);
+    this.rig.add(bow);
+    this.rig.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.14, 0.05), flat(0x2a1c10)));
+    const stringMat = new THREE.MeshBasicMaterial({ color: 0xe8e2cf });
+    this.strings = [0, 1].map(() => {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 1, 3), stringMat);
+      this.rig.add(m);
+      return m;
+    });
+    this.tips = [new THREE.Vector3(0, 0.42, 0), new THREE.Vector3(0, -0.42, 0)];
+    this.nock = new THREE.Vector3();
 
-    const rod = (r, mat) => new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 5), mat);
-    // Riser (handle) + limbs (2 segments each so they can bend).
-    this.riser = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.26, 0.05), wood);
-    this.root.add(this.riser);
-    this.gripMesh = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.1, 0.06), grip);
-    this.root.add(this.gripMesh);
-    this.limbs = [rod(0.012, wood), rod(0.01, wood), rod(0.012, wood), rod(0.01, wood)];
-    this.strings = [rod(0.0025, stringMat), rod(0.0025, stringMat)];
-    for (const m of [...this.limbs, ...this.strings]) this.root.add(m);
-
-    // The nocked arrow.
+    // The nocked arrow: points along -Z, its tip at the origin.
     this.arrow = new THREE.Group();
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.78, 5).rotateX(Math.PI / 2).translate(0, 0, -0.39), flat(0xb08850));
-    const head = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.05, 4).rotateX(-Math.PI / 2).translate(0, 0, -0.8), flat(0x3a3a3a, { metalness: 0.6 }));
-    const fl = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.014, 0.07).translate(0, 0.008, -0.07), flat(0xf2efe6));
-    const fl2 = fl.clone();
-    fl2.rotation.z = 2.1;
-    const fl3 = fl.clone();
-    fl3.rotation.z = -2.1;
-    this.arrow.add(shaft, head, fl, fl2, fl3);
-    this.root.add(this.arrow);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.8, 5).rotateX(Math.PI / 2), flat(0xc9b48a));
+    shaft.position.z = 0.5;
+    const head = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.12, 4).rotateX(-Math.PI / 2), flat(0x3a3a3a));
+    head.position.z = 0.06;
+    const fl1 = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.07, 0.11), flat(0xf1efe6));
+    fl1.position.set(0, 0.035, 0.83);
+    const fl2 = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.004, 0.11), flat(0xf1efe6));
+    fl2.position.set(0.035, 0, 0.83);
+    this.arrow.add(shaft, head, fl1, fl2);
+    this.rig.add(this.arrow);
+    this.hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.07, 0.09), flat(0xb8865e));
+    this.rig.add(this.hand);
   }
 
   update(dt, input) {
-    const { player, arrows, train, camera, sound } = this.game;
-    if (player.dead) {
-      this.state = 'ready';
-      this.draw = 0;
+    const p = this.player;
+    if (p.dead) {
+      this.drawing = false;
+      this.drawT = 0;
       return;
     }
-    if (this.state === 'reloading') {
-      this.reload -= dt;
-      if (this.reload <= 0) this.state = 'ready';
-    }
-    if (this.state === 'ready' && input.mouse[0] && player.arrows > 0) {
-      this.state = 'drawing';
-      this.draw = 0;
-      sound.creak();
-    }
-    if (this.state === 'drawing') {
-      this.draw = Math.min(1, this.draw + dt / B.fullDrawTime);
-      if (input.mouse[2]) {
-        this.state = 'ready';
-        this.draw = 0;
-      } else if (!input.mouse[0]) {
-        this.fire(camera, player, train, arrows, sound);
-      }
+    const held = input.drawHeld();
+    if (!this.drawing && held && !this.wasHeld) this.startDraw();
+    this.wasHeld = held;
+    if (this.drawing) {
+      this.drawT = Math.min(B.fullDrawTime, this.drawT + dt);
+      if (!held) this.release();
     }
   }
 
-  fire(camera, player, train, arrows, sound) {
-    const power = this.draw;
-    this.draw = 0;
-    if (power < 0.08) {
-      this.state = 'ready';
-      return;
-    }
-    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-    const origin = camera.position.clone().addScaledVector(dir, 0.35);
-    origin.y -= 0.04;
-    const speed = lerp(B.minSpeed, B.maxSpeed, power);
-    // The arrow keeps the motion of the train (and of you walking).
-    const vel = dir.multiplyScalar(speed).add(player.worldVelocity());
-    arrows.spawn(origin, vel, 'player');
-    player.arrows--;
-    sound.twang(power);
-    this.state = 'reloading';
-    this.reload = B.reloadTime;
+  startDraw() {
+    const p = this.player;
+    if (p.onLadder) return this.game.hud.message('Hands on the ladder');
+    if (p.arrows <= 0) return;
+    this.drawing = true;
+    this.drawT = 0;
+    this.game.sound.creak();
   }
 
-  // Animate the bow model and the zoom.
+  release() {
+    const e = this.power();
+    this.drawing = false;
+    this.drawT = 0;
+    if (e < B.minPower) return;
+    this.fire(e);
+  }
+
+  fire(e) {
+    const { camera, arrows, train, sound } = this.game;
+    const p = this.player;
+    p.arrows--;
+    const v0 = B.snapSpeed + (B.fullSpeed - B.snapSpeed) * e;
+    const look = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    const from = this.nockWorld(new THREE.Vector3());
+    // Aim from the bow at the point on the crosshair line `zero` metres out.
+    const zero = B.zeroSnap + (B.zeroFull - B.zeroSnap) * e;
+    const dir = camera.position.clone().addScaledVector(look, zero).sub(from).normalize();
+    // Nose up so the drop lands it on the crosshair at that distance.
+    const alpha = Math.asin(clamp((CONFIG.gravity * zero) / (v0 * v0), 0, 1)) * 0.5;
+    const axis = new THREE.Vector3(0, 1, 0).cross(dir).normalize();
+    dir.applyAxisAngle(axis, -alpha);
+    // The arrow keeps the train's speed.
+    const vel = dir.multiplyScalar(v0).add(train.velocity);
+    arrows.spawn(from, vel, 'player');
+    sound.twang(e);
+    this.kick = 0.6 + 0.6 * e;
+    p.shake = Math.max(p.shake, 0.12 * e);
+  }
+
+  // Where the arrow's tip sits right now, in the world.
+  nockWorld(out) {
+    this.rig.updateMatrixWorld(true);
+    out.set(0, 0, 0.1);
+    this.arrow.localToWorld(out); // camera space (the overlay scene's origin is the eye)
+    return this.game.camera.localToWorld(out);
+  }
+
+  // The view zooms a little as the bow charges.
+  fov(camera) {
+    this.baseFov = camera.aspect < 1 ? CONFIG.view.portraitFov : CONFIG.view.fov;
+    return this.baseFov - CONFIG.view.drawZoom * this.power();
+  }
+
+  // Animate the bow model (reference 0.7's updateBowRig) and draw it.
   render(renderer, mainCamera, dt) {
-    const target = this.state === 'drawing' ? this.draw : 0;
-    this.shown += (target - this.shown) * Math.min(1, dt * (target > this.shown ? 30 : 12));
-    const d = this.shown;
-    const e = d * d * (3 - 2 * d);
+    const draw = this.drawing ? this.power() : 0;
+    this.kick *= Math.pow(0.78, dt * 60);
+    const k = this.kick;
+    const d = draw * 0.5 + k * 0.12;
+    this.nock.set(0, -0.01, draw * 0.5);
+    placeBetween(this.strings[0], this.tips[0], this.nock);
+    placeBetween(this.strings[1], this.tips[1], this.nock);
+    const p = this.player;
+    this.arrow.visible = p.arrows > 0 && !p.dead;
+    this.arrow.position.set(0, -0.01, d - 0.9);
+    this.hand.position.set(0, -0.03, d);
+    this.rig.position.set(0.46 - draw * 0.16, -0.3 + draw * 0.08 + k * 0.03, -0.74 + draw * 0.04 + k * 0.07);
+    this.rig.rotation.set(0.05 - draw * 0.04 + k * 0.16, 0.1 - draw * 0.14, -0.2 + draw * 0.08);
 
-    // Zoom in a little as you draw.
-    mainCamera.fov = lerp(CONFIG.view.fov, CONFIG.view.drawFov, e);
-    mainCamera.updateProjectionMatrix();
     this.camera.fov = mainCamera.fov;
     this.camera.aspect = mainCamera.aspect;
     this.camera.updateProjectionMatrix();
-
-    // Bow position: low and to the side at rest, centred when drawn.
-    const sway = Math.sin(performance.now() * 0.002) * 0.004 * (1 - d);
-    this.root.position.set(lerp(0.24, 0.02, e), lerp(-0.25, -0.035, e) + sway, lerp(0.02, 0, e));
-    this.root.rotation.set(lerp(0.15, 0, e), lerp(0.3, 0, e), lerp(-0.45, -0.15, e));
-
-    // Grip is at z = -0.6; tips come back a bit as the limbs bend.
-    const gz = -0.6;
-    const tipY = 0.56 - 0.07 * d;
-    const tipZ = gz + 0.1 + 0.12 * d;
-    const midY = 0.33 - 0.02 * d;
-    const midZ = gz - 0.02 + 0.05 * d;
-    this.riser.position.set(0, 0, gz);
-    this.gripMesh.position.set(0, 0, gz + 0.005);
-    const v = (x, y, z) => new THREE.Vector3(x, y, z);
-    for (const s of [1, -1]) {
-      const i = s === 1 ? 0 : 2;
-      placeBetween(this.limbs[i], v(0, 0.12 * s, gz), v(0, midY * s, midZ));
-      placeBetween(this.limbs[i + 1], v(0, midY * s, midZ), v(0, tipY * s, tipZ));
-    }
-    const nockZ = tipZ + 0.02 + d * 0.14;
-    const nock = v(0, 0, nockZ);
-    placeBetween(this.strings[0], v(0, tipY, tipZ), nock);
-    placeBetween(this.strings[1], v(0, -tipY, tipZ), nock);
-
-    // Arrow sits on the string; slides up into place while reloading.
-    const p = this.game.player;
-    const hasArrow = p.arrows > 0 && !p.dead;
-    this.arrow.visible = hasArrow;
-    const rise = this.state === 'reloading' ? Math.min(1, this.reload / B.reloadTime) : 0;
-    this.arrow.position.set(0.012, -rise * 0.25, nockZ);
-
     renderer.clearDepth();
     renderer.render(this.scene, this.camera);
   }

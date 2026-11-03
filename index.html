@@ -12,8 +12,11 @@
   <body>
     <div id="hud">
       <div id="stats"></div>
-      <div id="crosshair"></div>
-      <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+      <!-- crosshair: a thin cross with an open centre; the X flashes on a hit (§B, §L) -->
+      <svg id="cross" viewBox="0 0 72 72" aria-hidden="true">
+        <g class="xh"><line x1="36" y1="21" x2="36" y2="30" /><line x1="36" y1="42" x2="36" y2="51" /><line x1="21" y1="36" x2="30" y2="36" /><line x1="42" y1="36" x2="51" y2="36" /></g>
+        <g class="xm"><line x1="22" y1="22" x2="31" y2="31" /><line x1="50" y1="22" x2="41" y2="31" /><line x1="22" y1="50" x2="31" y2="41" /><line x1="50" y1="50" x2="41" y2="41" /></g>
+      </svg>
       <div id="callout"></div>
       <div id="feed"></div>
       <div id="prompt"></div>
@@ -39,7 +42,6 @@
           <tr><td>W at a ladder</td><td>Climb (S to go down)</td></tr>
           <tr><td>Hold left mouse</td><td>Draw the bow — longer = stronger</td></tr>
           <tr><td>Release</td><td>Loose the arrow</td></tr>
-          <tr><td>Right mouse</td><td>Cancel the draw</td></tr>
           <tr><td>Esc</td><td>Pause</td></tr>
         </table>
         <p class="tip">Walk over arrows stuck in the train to pick them up. Aim for the head.</p>

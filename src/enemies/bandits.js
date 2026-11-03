@@ -7,51 +7,68 @@ import { groundHeight } from '../world/terrain.js';
 const E = CONFIG.enemies;
 const D = CONFIG.damage;
 
-// Hit zones, as boxes in each part's own local space.
-// Horse and rider face -Z.
-const HORSE_ZONES = [
-  { zone: 'horseBody', min: new THREE.Vector3(-0.33, 0.92, -0.88), max: new THREE.Vector3(0.33, 1.68, 0.88) },
-  { zone: 'horseHead', min: new THREE.Vector3(-0.17, 1.5, -1.6), max: new THREE.Vector3(0.17, 2.3, -0.85) },
-];
-const RIDER_ZONES = [
-  { zone: 'riderHead', min: new THREE.Vector3(-0.14, 2.31, -0.14), max: new THREE.Vector3(0.14, 2.6, 0.14) },
-  { zone: 'riderBody', min: new THREE.Vector3(-0.25, 1.62, -0.22), max: new THREE.Vector3(0.25, 2.31, 0.22) },
-  { zone: 'riderBody', min: new THREE.Vector3(-0.42, 1.15, -0.25), max: new THREE.Vector3(0.42, 1.7, 0.15) },
-];
+// Hit zones (§U): every painted box of the horse and rider is its own hit
+// box, tested in that part's own frame and padded a little: 7 cm on
+// bodies and heads, 9 cm on arms, legs and tails. When an arrow clips
+// several parts within 0.3 m of each other, the lowest priority wins
+// (the head beats the body behind it).
+const ZONES = {
+  riderHead: { pri: 1 },
+  horseHead: { pri: 4 },
+  riderBody: { pri: 10 },
+  horseBody: { pri: 12 },
+};
+const PAD_BODY = 0.07;
+const PAD_LIMB = 0.09;
+const PRIORITY_WINDOW = 0.3; // metres
 
 const HORSE_COATS = [0x6b3e22, 0x3a2618, 0xb98a52, 0x8a5a34, 0x2a2420, 0xd8cfc0];
 const COATS = [0x5a4632, 0x3d3a36, 0x6e4a2c, 0x2e2a28, 0x7a6248];
 const BANDANAS = [0xa8261e, 0x2a4a7a, 0x1f1f1f, 0x8a6a20];
 
-function box(w, h, d, color, x, y, z, parent) {
+function box(w, h, d, color, x, y, z, parent, zone = null, pad = PAD_BODY) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), flat(color));
   m.position.set(x, y, z);
   m.castShadow = true;
   parent.add(m);
+  if (zone) {
+    m.userData.hit = {
+      zone,
+      min: new THREE.Vector3(-w / 2 - pad, -h / 2 - pad, -d / 2 - pad),
+      max: new THREE.Vector3(w / 2 + pad, h / 2 + pad, d / 2 + pad),
+    };
+  }
   return m;
+}
+
+// Every mesh under `root` that carries a hit box.
+function hitParts(root) {
+  const list = [];
+  root.traverse((o) => o.userData.hit && list.push(o));
+  return list;
 }
 
 function buildHorse() {
   const g = new THREE.Group();
   const coat = HORSE_COATS[Math.floor(Math.random() * HORSE_COATS.length)];
   const dark = 0x1c1612;
-  box(0.62, 0.7, 1.7, coat, 0, 1.3, 0, g); // body
-  const neck = box(0.3, 0.8, 0.38, coat, 0, 1.78, -0.88, g);
+  box(0.62, 0.7, 1.7, coat, 0, 1.3, 0, g, 'horseBody'); // body
+  const neck = box(0.3, 0.8, 0.38, coat, 0, 1.78, -0.88, g, 'horseHead');
   neck.rotation.x = -0.65;
-  const head = box(0.26, 0.28, 0.62, coat, 0, 2.02, -1.3, g);
+  const head = box(0.26, 0.28, 0.62, coat, 0, 2.02, -1.3, g, 'horseHead');
   head.rotation.x = 0.45;
   box(0.08, 0.5, 0.3, dark, 0, 1.95, -0.8, g).rotation.x = -0.65; // mane
   for (const s of [-1, 1]) box(0.06, 0.14, 0.06, coat, s * 0.08, 2.22, -1.12, g); // ears
-  const tail = box(0.1, 0.7, 0.12, dark, 0, 1.25, 0.95, g);
+  const tail = box(0.1, 0.7, 0.12, dark, 0, 1.25, 0.95, g, 'horseBody', PAD_LIMB);
   tail.rotation.x = 0.4;
-  box(0.66, 0.06, 0.6, 0x7a2a1e, 0, 1.66, 0.0, g); // saddle blanket
+  box(0.66, 0.06, 0.6, 0x7a2a1e, 0, 1.66, 0.0, g, 'horseBody'); // saddle blanket
   box(0.42, 0.12, 0.5, 0x4a2c18, 0, 1.72, 0.02, g); // saddle
   const legs = [];
   for (const [x, z] of [[-0.2, -0.65], [0.2, -0.65], [-0.2, 0.65], [0.2, 0.65]]) {
     const pivot = new THREE.Group();
     pivot.position.set(x, 1.1, z);
-    box(0.14, 0.95, 0.16, coat, 0, -0.47, 0, pivot);
-    box(0.15, 0.12, 0.18, dark, 0, -1.02, 0, pivot);
+    box(0.14, 0.95, 0.16, coat, 0, -0.47, 0, pivot, 'horseBody', PAD_LIMB);
+    box(0.15, 0.12, 0.18, dark, 0, -1.02, 0, pivot, 'horseBody', PAD_LIMB);
     g.add(pivot);
     legs.push(pivot);
   }
@@ -63,21 +80,21 @@ function buildRider() {
   const coat = COATS[Math.floor(Math.random() * COATS.length)];
   const skin = 0xc08a62;
   for (const s of [-1, 1]) {
-    const leg = box(0.16, 0.62, 0.2, 0x3a3028, s * 0.36, 1.48, -0.05, g);
+    const leg = box(0.16, 0.62, 0.2, 0x3a3028, s * 0.36, 1.48, -0.05, g, 'riderBody', PAD_LIMB);
     leg.rotation.z = s * 0.2;
-    box(0.17, 0.16, 0.26, 0x1c1612, s * 0.42, 1.14, -0.1, g); // boots
+    box(0.17, 0.16, 0.26, 0x1c1612, s * 0.42, 1.14, -0.1, g, 'riderBody', PAD_LIMB); // boots
   }
   // Upper body turns to aim at the player.
   const upper = new THREE.Group();
   upper.position.set(0, 1.7, 0);
   g.add(upper);
-  box(0.44, 0.62, 0.28, coat, 0, 0.3, 0, upper); // torso
-  box(0.46, 0.22, 0.3, coat, 0, 0.0, 0, upper); // coat tails
+  box(0.44, 0.62, 0.28, coat, 0, 0.3, 0, upper, 'riderBody'); // torso
+  box(0.46, 0.22, 0.3, coat, 0, 0.0, 0, upper, 'riderBody'); // coat tails
   const head = new THREE.Group();
   head.position.set(0, 0.76, 0);
   upper.add(head);
-  box(0.22, 0.25, 0.22, skin, 0, 0, 0, head);
-  box(0.235, 0.12, 0.235, BANDANAS[Math.floor(Math.random() * BANDANAS.length)], 0, -0.06, 0, head);
+  box(0.22, 0.25, 0.22, skin, 0, 0, 0, head, 'riderHead');
+  box(0.235, 0.12, 0.235, BANDANAS[Math.floor(Math.random() * BANDANAS.length)], 0, -0.06, 0, head, 'riderHead');
   const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 10), flat(0x4a3424));
   brim.position.y = 0.14;
   const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.17, 8), flat(0x4a3424));
@@ -87,7 +104,7 @@ function buildRider() {
   const bowArm = new THREE.Group();
   bowArm.position.set(-0.26, 0.55, 0);
   upper.add(bowArm);
-  box(0.12, 0.12, 0.6, coat, 0, 0, -0.3, bowArm);
+  box(0.12, 0.12, 0.6, coat, 0, 0, -0.3, bowArm, 'riderBody', PAD_LIMB);
   const bow = new THREE.Group();
   bow.position.set(0, 0, -0.62);
   bowArm.add(bow);
@@ -99,7 +116,7 @@ function buildRider() {
   const drawArm = new THREE.Group();
   drawArm.position.set(0.26, 0.55, 0);
   upper.add(drawArm);
-  box(0.12, 0.12, 0.45, coat, 0, 0, -0.18, drawArm);
+  box(0.12, 0.12, 0.45, coat, 0, 0, -0.18, drawArm, 'riderBody', PAD_LIMB);
   g.traverse((o) => o.isMesh && (o.castShadow = true));
   return { group: g, upper, bowArm, drawArm, head };
 }
@@ -122,6 +139,9 @@ class Bandit {
     this.riderParts = r;
     this.root.add(this.rider);
     mgr.scene.add(this.root);
+    this.horseHits = hitParts(this.horse);
+    this.riderHits = hitParts(this.rider);
+    this.moved = new THREE.Vector3(); // how far we moved this frame
 
     const t = mgr.game.train;
     this.pos = new THREE.Vector3(side * (Math.abs(this.slotX) + 6), 0, t.position.z + rand(55, 85));
@@ -177,6 +197,7 @@ class Bandit {
         this.vel.z *= ns / sp;
       }
     }
+    this.moved.copy(this.vel).multiplyScalar(dt);
     this.pos.addScaledVector(this.vel, dt);
     this.pos.y = groundHeight(this.pos.x, this.pos.z);
 
@@ -247,21 +268,23 @@ class Bandit {
     this.mgr.game.sound.enemyTwang(origin, player);
   }
 
-  // Test an arrow's path against our hit zones.
-  trace(p0, p1) {
-    let best = null;
-    const test = (part, zones) => {
-      const inv = new THREE.Matrix4().copy(part.matrixWorld).invert();
-      const a = p0.clone().applyMatrix4(inv);
-      const b = p1.clone().applyMatrix4(inv);
-      for (const z of zones) {
-        const h = segmentBox(a, b, z.min, z.max);
-        if (h && (!best || h.t < best.t)) best = { t: h.t, type: 'bandit', zone: z.zone, part, bandit: this };
+  // Test an arrow's path against every painted part (§U). The path is
+  // shifted by how far we galloped this frame, so it is seen from the
+  // rider's own point of view and fast riders don't slip between frames.
+  // Adds candidate hits to `out`.
+  trace(p0, p1, out) {
+    const start = p0.clone().add(this.moved);
+    const test = (parts) => {
+      for (const m of parts) {
+        const inv = new THREE.Matrix4().copy(m.matrixWorld).invert();
+        const a = start.clone().applyMatrix4(inv);
+        const b = p1.clone().applyMatrix4(inv);
+        const h = segmentBox(a, b, m.userData.hit.min, m.userData.hit.max);
+        if (h) out.push({ t: h.t, type: 'bandit', zone: m.userData.hit.zone, part: m, bandit: this });
       }
     };
-    if (this.horseAlive) test(this.horse, HORSE_ZONES);
-    if (this.mounted) test(this.rider, RIDER_ZONES);
-    return best;
+    if (this.horseAlive) test(this.horseHits);
+    if (this.mounted) test(this.riderHits);
   }
 
   onHit(zone, arrowVel) {
@@ -413,13 +436,21 @@ export class BanditManager {
     this.game.hud.message(side < 0 ? 'Rider coming up on the left!' : 'Rider coming up on the right!');
   }
 
+  // The part an arrow hits first, settling near-ties by priority (§F, §U).
   trace(p0, p1) {
-    let best = null;
+    const hits = [];
     for (const b of this.bandits) {
       if (!b.horseAlive && !b.mounted) continue;
-      if (b.pos.distanceToSquared(p0) > 900 && b.pos.distanceToSquared(p1) > 900) continue;
-      const h = b.trace(p0, p1);
-      if (h && (!best || h.t < best.t)) best = h;
+      if (b.pos.distanceToSquared(p1) > 100) continue;
+      b.trace(p0, p1, hits);
+    }
+    if (!hits.length) return null;
+    const segLen = p0.distanceTo(p1);
+    const first = Math.min(...hits.map((h) => h.t));
+    let best = null;
+    for (const h of hits) {
+      if ((h.t - first) * segLen > PRIORITY_WINDOW) continue;
+      if (!best || ZONES[h.zone].pri < ZONES[best.zone].pri) best = h;
     }
     return best;
   }

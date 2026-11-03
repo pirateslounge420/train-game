@@ -44,9 +44,8 @@ server above.)
 | W A S D | Walk (hold **Shift** to run) |
 | Space | Jump |
 | W while facing a ladder | Climb up (S to climb down, Space to let go) |
-| Hold left mouse | Draw the bow: the longer you hold, the stronger the shot (full draw in about half a second) |
-| Release left mouse | Shoot |
-| Right mouse (while drawing) | Cancel the shot without wasting the arrow |
+| Hold left mouse | Draw the bow: the longer you hold, the stronger the shot (full draw in one second) |
+| Release left mouse | Shoot. You can start the next draw straight away. A very short tap shoots nothing. |
 | Esc | Pause |
 
 ## What's in this prototype
@@ -63,13 +62,20 @@ server above.)
   whole train, climb the ladders onto the boxcar roof, drop onto the coal
   tender, get into the cab, and walk the running boards beside the boiler up
   to the front. You move with the train. If you fall off, you die.
-- **Bow and arrow.** Arrows fly at real-life speed (up to about 64 m/s, or
-  210 ft/s) with real gravity, so you can see them arc and drop at range.
-  They also keep the train's speed, so shooting forward, backward or sideways
-  all behave differently. No aim assist and no aiming line: it's just you.
-  Your arrow count is shown at the bottom right.
+- **Bow and arrow** (design §B, §L, §U, ported from reference build 0.7).
+  A snap shot leaves at 45 m/s (100 mph) and a full draw at 80 m/s
+  (180 mph). Real gravity and a tiny bit of air drag, so you can see the arc.
+  Arrows keep the train's speed. The sight is "zeroed": the arrow leaves
+  the bow in your hand and lands on the crosshair at 15 m (snap shot) to
+  35 m (full draw); further than that it drops below. The view zooms in a
+  little as you draw and the bow kicks when you let go. Every arrow leaves
+  a thin trail: pale blue-white for yours, orange-red for theirs. No aim
+  assist and no aiming line. You start with 20 arrows (up to 40), shown at
+  the bottom right.
 - **Bandits.** Riders gallop up beside the train and shoot arrows at you.
-  More of them show up as you knock them down. Each has four hit zones:
+  More of them show up as you knock them down. Every box you can see on
+  horse and rider is its own hit box, padded a few centimetres (§U), and
+  each belongs to one of four hit zones:
   - **Rider's head:** instant kill, a big gold "HEADSHOT!" and a ding.
   - **Rider's body:** two hits kill him, and any hit may knock him off his horse.
   - **Horse's head:** kills the horse and throws the rider.
@@ -80,7 +86,7 @@ server above.)
   use the crates for cover.
 - **Collecting arrows.** Bandit arrows (red feathers) and your own (white)
   that hit the train stay stuck in it. Walk up to one to pull it out and add
-  it to your quiver (up to 30).
+  it to your quiver (up to 40).
 
 ## Tweaking the game
 

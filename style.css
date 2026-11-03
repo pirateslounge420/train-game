@@ -31,52 +31,24 @@ canvas {
   text-shadow: 0 1px 3px #000;
 }
 
-#crosshair {
+/* Crosshair and hit X, as in reference 0.7 (52 px). */
+#cross {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 4px;
-  height: 4px;
-  margin: -2px 0 0 -2px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 0 2px #000;
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
 }
-
-#hitmarker {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
-  opacity: 0;
+#cross line {
+  stroke: #f3e6c8;
+  stroke-linecap: square;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9));
 }
-#hitmarker i {
-  position: absolute;
-  width: 3px;
-  height: 11px;
-  background: #fff;
-  box-shadow: 0 0 2px #000;
-  left: -1.5px;
-  top: -5.5px;
-}
-#hitmarker i:nth-child(1) { transform: rotate(45deg) translateY(-12px); }
-#hitmarker i:nth-child(2) { transform: rotate(135deg) translateY(-12px); }
-#hitmarker i:nth-child(3) { transform: rotate(225deg) translateY(-12px); }
-#hitmarker i:nth-child(4) { transform: rotate(315deg) translateY(-12px); }
-#hitmarker.show { animation: hit 0.35s ease-out; }
-#hitmarker.kill i { background: #ff5a3c; }
-#hitmarker.headshot i { background: #ffd24a; height: 16px; }
-#hitmarker.headshot { animation: hitBig 0.6s ease-out; }
-@keyframes hit {
-  0% { opacity: 1; transform: scale(1.4); }
-  100% { opacity: 0; transform: scale(1); }
-}
-@keyframes hitBig {
-  0% { opacity: 1; transform: scale(2.2) rotate(10deg); }
-  60% { opacity: 1; }
-  100% { opacity: 0; transform: scale(1.2); }
-}
+#cross .xh line { stroke-width: 2; }
+#cross .xm line { stroke-width: 2.5; opacity: 0; transition: opacity 0.08s; }
+#cross.hit .xm line { opacity: 1; }
+#cross.big .xm line { stroke: #e2aa3f; stroke-width: 3.5; }
 
 #callout {
   position: absolute;

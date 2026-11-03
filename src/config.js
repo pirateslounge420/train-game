@@ -10,8 +10,9 @@ export const CONFIG = {
   },
 
   view: {
-    fov: 75,
-    drawFov: 64, // camera zooms in slightly at full draw
+    fov: 72, // landscape screens (as in the reference build)
+    portraitFov: 84, // phones held upright see a little wider
+    drawZoom: 7, // degrees the view narrows at full draw (§U)
     mouseSensitivity: 0.0022,
   },
 
@@ -27,16 +28,22 @@ export const CONFIG = {
     maxHealth: 100,
     regenPerSecond: 0.35, // very slow
     regenDelay: 4, // seconds after being hit before regen resumes
-    startArrows: 15,
-    maxArrows: 30,
+    startArrows: 20,
+    maxArrows: 40,
     pickupRadius: 1.4,
   },
 
+  // Archery, ported from reference build 0.7 (§B, §L, §U).
   bow: {
-    fullDrawTime: 0.55, // seconds to reach full draw
-    minSpeed: 18, // m/s – a barely-drawn bow
-    maxSpeed: 64, // m/s (~210 ft/s) – a real hunting recurve at full draw
-    reloadTime: 0.45, // nocking the next arrow
+    fullDrawTime: 1.0, // seconds to full draw; power follows (t² + 2t) / 3
+    minPower: 0.1, // a draw weaker than this looses nothing
+    snapSpeed: 45, // m/s (100 mph) for a snap shot...
+    fullSpeed: 80, // ...up to 80 m/s (180 mph) at full draw
+    zeroSnap: 15, // the arrow meets the crosshair at 15 m for a snap shot...
+    zeroFull: 35, // ...and at 35 m at full draw; beyond that it drops
+    drag: 0.0005, // tiny air drag
+    life: 40, // seconds an arrow can stay in the air (high lobs come down)
+    groundTime: 5, // seconds an arrow stays stuck in the ground
   },
 
   enemies: {
