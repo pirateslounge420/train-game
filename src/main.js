@@ -11,6 +11,7 @@ import { Bow } from './combat/bow.js';
 import { ArrowSystem } from './combat/arrows.js';
 import { Riders } from './enemies/riders.js';
 import { Hats } from './train/hats.js';
+import { HitView } from './debug/hitview.js';
 
 // The riders' bodies and hit reactions are data (§O, §P).
 const RIGS = await (await fetch('src/enemies/rigs.json')).json();
@@ -88,6 +89,7 @@ const HEADLAMP = 300; // candela-ish; three.js lights fall off with distance
 game.arrows = new ArrowSystem(game);
 game.riders = new Riders(game, RIGS);
 game.hats = new Hats(game);
+game.hitView = new HitView(game); // H: show hitboxes and arrow paths (§X)
 player.bow = new Bow(game, player); // each player carries their own bow (§W)
 
 // ---- start / pause / death screens -----------------------------------------
@@ -225,6 +227,7 @@ function update(dt) {
   game.riders.update(dt, time);
   game.arrows.update(dt);
   game.hats.update(dt);
+  game.hitView.update(dt);
   if (input.take('grabReq')) grab();
   if (input.take('surgeReq')) surge();
   for (const t of input.takeTaps()) grab(t);

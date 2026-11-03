@@ -162,6 +162,7 @@ export class ArrowSystem {
       a.pos.addScaledVector(a.vel, dt);
       a.age += dt;
       const hit = this.trace(p0, a.pos, a, dt);
+      if (a.owner === 'player') this.game.hitView?.path(p0, hit ? p0.clone().lerp(a.pos, hit.t) : a.pos, !!hit);
       if (hit) {
         this.resolveHit(a, hit, p0);
         this.removeFlying(i);
