@@ -5,7 +5,7 @@ Locked decisions only. Each section has a letter so prompts, commits and progres
 Status key: **built (ref)** = in the reference build; **built (repo)** = in `src/`; **not built**.
 
 ## §A. What the game is
-- Wild West rail shooter, first person, low-poly. Made-up era where steam was pushed further instead of moving to electricity: engineers run ~1000 psi boilers; the engine is a six-cylinder piston engine with visible rods plus a steam turbine (with the turbine engaged it can reach ~300 mph, but takes a while to get there).
+- Rail shooter, first person, 3D: an alternate post-apocalyptic timeline where the Wild West meets future tech (§V). Frontier engineers run ~1000 psi boilers; the engine is a six-cylinder piston engine with visible rods plus a steam turbine (with the turbine engaged it can reach ~300 mph, but takes a while to get there).
 - Arcade "how far can you get": ride the line through changing country; towns between regions; cruise speed steps up each region; infinite, no ending. Landscapes keep changing, never loop.
 - Everybody uses bows and arrows. Threats later: bandits, folklore beasts per region, a boss creature in the deepest wilderness between towns, environmental hazards. Day-night cycle (144-minute day), night more dangerous. Possibly a recruit per town (AI companion you don't control). None of the "later" items are built.
 
@@ -150,6 +150,30 @@ A second chat built these into the same artifact on 3 Nov and they are kept in t
 - **The tail is a thread.** Trail width 3 cm at the arrow, fading to 4 mm, 12 segments, dimmer. The arrow should look as thin as its hitbox.
 - **Dismounted riders get up.** A man knocked out of the saddle who still has his head, his hips and both legs is not dead: he lies where he lands for one to two seconds, gets up, and runs at the train (7.5 m/s), firing two or three wild hail-mary shots on the run (his aim 1.7× worse than mounted), then turns and runs for it when his quiver is empty. Any hit finishes him (FINISHED, or the part's own label; a popped head still counts as a headshot). He counts as a kill only when finished; a man who runs out of range got away. Survivable: a torso knock-off (two torso hits), being thrown when the horse goes down. Fatal: head, neck, gut, or a fall after losing a leg.
 - **Two 0.6 bugs fixed, found by the simulator:** hat shots never registered in 0.6 (the flag that says a rider is wearing a hat was never set), and a hat shot would have thrown an error every frame had it registered. Both fixed; hats fly to the rack again. Also: riders who fled kept pace with the train 95 m out and blocked new riders from spawning; a rider who has fled 80 m out is now gone.
+
+## §V. Steampunk cyborg frontier (3 Nov; Mike, locked; replaces §A's old setting; amends §E, §J, §Q) — not built
+**Setting.** An alternate post-apocalyptic timeline where the Wild West meets future tech. A high-tech civilisation collapsed long ago. Frontier life rebuilt itself on top of the ruins, using scavenged old-world tech alongside steam.
+
+**The look, for the whole game: steampunk cyborg frontier.**
+- Brass and bronze mechanical parts, rivets, gears, exposed pistons, goggles.
+- Clockwork / cyborg horses and riders with scavenged prosthetics bolted onto Western gear: cowboy hats, ponchos, bandanas, leather straps, quivers.
+- A signature glowing green energy (salvaged old-world power) pulses through cracks, veins and seams in machines, cyborg parts and weapons. It is the accent colour against warm desert tones.
+- Bows stay the weapon for everyone, now with mechanical limbs, brass fittings and glowing accents.
+- The train is half salvage, half frontier engineering: the six-cylinder rods and turbine stay, now with brass plating, glowing seams and patched old-world tech.
+- Ruins of the old world appear across regions: half-buried towers, rusted machinery, broken highways, overgrown tech.
+
+**Keep.** The Torchfire palette and lighting approach, the higher-poly textured look, first person 3D. Pixel art stays for the wanted-poster portraits only.
+
+**Everything else stays.** All existing regions, enemies and systems stay, re-skinned to fit the new setting (skeletal cyborg riders in the ghost town, a post-apocalyptic jungle tribe, and so on). This direction changes no gameplay system.
+
+**Reference image.** A brass clockwork horse with green glowing cracks; a rider in goggles, green bandana, green lightning-pattern poncho, brown cowboy hat and brass gauntlets, with a matching mechanical bow.
+
+**What this overrides.** §E: goggles replace the dark void face, and the reference rider's hat is brown, where §E keeps hats dark. §J: green energy joins the warm accents, where §J allowed one warm accent in the wild. §A and §J's "low-poly" gives way to the higher-poly textured look (§Q).
+
+**Open (for Mike and Claude chat).**
+- The ghost town, the jungle tribe and the wanted posters are named above but are not designed anywhere in this doc yet.
+- The visible six cylinders and the turbine are not on the current engine: reference 0.7, ported to `src/` under §N, has neither.
+- This is not yet in the §Z queue.
 
 ## §Z. The queue (order of work for Claude Code)
 1. Port the reference build's feel into `src/`, feature by feature, keeping the repo's module layout: §B/§L/§U archery and hitboxes, §C/§M walking and phone controls, §G/§R the seeded line, climate biomes and the day, §D/§K/§N the four cars, the engine and the surge, §E/§O/§U riders, dismounted riders and gore (as data), §H/§T hats, §I HUD, §J/§Q look, §S the conductor, crouch, knock-off and hook. Stop and explain after each.

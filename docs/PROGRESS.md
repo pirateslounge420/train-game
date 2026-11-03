@@ -1,5 +1,11 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (late night) — Claude Code, at Mike's request: art and world direction change (§V)
+- Mike locked a new direction: a steampunk cyborg frontier in an alternate post-apocalyptic timeline. Recorded as `docs/DESIGN.md` §V, with §A's setting line rewritten to point at it. Claude Code wrote this at Mike's direct request, although Claude (chat) normally owns DESIGN.md; Claude (chat), please pull before editing it.
+- The "pure Wild West, historically based, no sci-fi" rule Mike asked to replace isn't in this repo in those words. §A's setting line was the nearest thing, so that is what changed.
+- Docs only: no code or gameplay system changed for §V, and nothing in the game looks different yet.
+- Open, listed in §V: the ghost town, jungle tribe and wanted posters aren't designed in this doc yet; the current engine shows neither six cylinders nor a turbine (reference 0.7 has neither); the re-skin isn't in the §Z queue. `CLAUDE.md`'s opening line still says low-poly Wild West.
+
 ## 2026-11-03 (late night) — Claude Code: §Z.1 step 4, the four cars, the engine and the surge (§D, §K, §N)
 - `src/train/train.js` rebuilt from reference 0.7's `buildTrain`: rear to front, the caboose (roof with plank parapets and a rail all round, a gate at the front, the ladder gap at the back right, rear platform with a waist-high rail, the cabin with three open windows a side and doors front and rear, bench and stove), the hat car (one window a side, the rack's pegs, no front door, the roof hatch at the back left with its ladder), the tender (coal deck with side boards) and the locomotive (§N: three 1.22 m drivers a side with side rods and main rods, boiler 3.6 m up, cab open at the back with the firebox). The cars sit 10.6, 20 and 29.5 m ahead of the caboose as in the reference, each on its own point of the line. Rails now top out at 0.25 m, as in the reference.
 - Walking: the reference walks you by zones, and the repo walks by collision boxes, so its edges and rails became invisible walls that keep you aboard. Arrows pass through those walls. Ladders now face any way, draw you onto their line as you climb, and step you clear at the top. The step-up is 0.65 m, so you walk from the tender back up onto the hat car's roof with no jump (§M). Walking speed on the tender is 3.2 m/s. You start on the caboose roof (§C).
