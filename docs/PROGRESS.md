@@ -1,5 +1,11 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (afternoon) — Claude (chat): reference build 0.6, design §K–§T
+- `reference/train-game-prototype-0.6.html`. Merged with a parallel chat session's 0.6 (conductor, crouch, parapets, knock-off, hook, water stops: §S, unconfirmed) rather than overwrite it.
+- Mike's 0.6 list, all in: steam is the player's call, three stacking surges from the tender to 200 mph, no shovel (§K); stretches 25 % longer; aim fix with the Torchfire draw curve, the arrow from the bow in hand, smaller reticle, bow carried right (§L); sprint by double-tap, smooth car crossings (§M); 8 ft drivers and the exhaust beat and horn (§N); the full anatomy rig with the gore table (§O); the asset standard (§P); less low-poly (§Q); Torchfire's 144-minute day and seeded, climate-picked generation (§R); wearable hats (§T).
+- Hitboxes: tested in the rider's frame, 1.2× spheres; arrows live 40 s.
+- Next for Claude Code: §Z item 1 from the 0.6 reference.
+
 ## 2026-11-03 — Claude (chat): reference build 0.5, design doc, brief
 - Added `reference/train-game-prototype-0.5.html`: Claude chat's single-file playable build (three.js r128, phone and desktop). Open it over any local server, same as the repo game. It is the spec for feel (§B–§J).
 - Added `docs/DESIGN.md` with every decision locked with Mike on 3 Nov: archery and the zeroed sight (§B), walking the train (§C), the four cars and the shovel-fed surge (§D), gangs and the gallop (§E), hit zones and gore (§F), the curving line, regions and tunnels (§G), hats and the hat car (§H), the clean HUD (§I), the look from the Torchfire frames (§J), co-op direction (§W), and the queue (§Z).

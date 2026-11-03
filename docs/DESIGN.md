@@ -73,8 +73,79 @@ From the Torchfire reference frames (Mike's twenty favourites; `docs/design/LOOK
 ## §W. Co-op (direction, not built)
 Couch split-screen, up to four on one train, after single-player is tight. From now on no system assumes one player: player state is per-player, the train and the world are shared.
 
+
+## §K. Steam is your call (3 Nov, afternoon; supersedes §D's surge and refill) — built ref 0.6
+- No shovel. Three surges a stretch, fired from the tender (Surge button / Q / F); the conductor never surges on his own. Towns restock the three.
+- Each surge adds 26 m/s of boost on top of the last (6 m/s² to get there); the boost bleeds off at 1.5 m/s each second back to cruise. Cap 200 mph. Riders fall back once the boost passes 12 m/s. A two-tone horn sounds on each surge.
+- Stretches between towns are 25 % longer (region length = cruise × 131 s).
+
+## §L. Aim and bow (3 Nov; supersedes parts of §B) — built ref 0.6
+- Draw: one second to full on the Torchfire / Minecraft curve, power = (t² + 2t) / 3; a draw under 0.1 looses nothing.
+- The arrow leaves the bow in your hand (lower right, carried further right than before) and is aimed to meet the crosshair line at the zero distance, 15 m (snap) to 35 m (full draw), nose-up by the zero formula in `fire()`. The view zooms 16° at full draw; the bow rises toward the middle as it charges.
+- Reticle smaller (52 px); hit X unchanged.
+- Hit test runs in the rider's own frame (the arrow's path is shifted by the rider's movement that frame), hit spheres 1.2×. Arrows live 40 s so a high lob comes all the way down.
+
+## §M. Movement — built ref 0.6
+- Sprint: double-tap forward and hold (W, or the stick), ×1.45, +6° FOV. Not while drawing or crouched.
+- Crossing between cars is continuous: you walk over the gap and change frames at its midpoint; no snap. Step heights (tender) ease over a few frames.
+
+## §N. The locomotive — built ref 0.6
+- Eight-foot drivers (radius 1.22 m), three of them, with a 1.1 m stroke and a longer main rod; the engine grew around them (boiler centre 3.6 m up, 8.2 m long; the cab floor at 2.5 m). Exhaust beats four to the driver turn at every speed, thinning to a roar past 16 a second.
+
+## §O. Anatomy and gore (3 Nov; supersedes §F) — built ref 0.6
+Horse and rider are trees of real parts with named joints. Every part is a hit sphere; a hit breaks that joint and the part flies with everything downstream, blood squirting from the stump, spin and launch scaled by the part's mass. Gibs bounce (restitution 0.5) and fade. The data lives in the reference build as `HORSE_RIG`, `RIDER_RIG` and `REACT`; Claude Code ports it as data (JSON), not as code. Priority: lower wins when an arrow clips several parts within 0.3 m.
+
+| Part | Joint (parent) | Mass kg | Hit radius m | Priority | Hits | Reaction | Gibs |
+|---|---|---|---|---|---|---|---|
+| barrel | (root) | 160 | 0.5 | 13 | 3 | counts hits; then horse down | 6 |
+| croup | barrel | 70 | 0.42 | 12 | 2 | counts hits; then horse down | 6 |
+| tail | croup | 3 | 0.14 | 14 | 1 | limb flies off (no reaction) | 2 |
+| neck1 | barrel | 26 | 0.24 | 5 | 1 | horse down, rider thrown | 9 |
+| neck2 | neck1 | 18 | 0.22 | 4 | 1 | horse down, rider thrown | 9 |
+| skull | neck2 | 12 | 0.28 | 3 | 1 | horse down, rider thrown | 10 |
+| upperFL | barrel | 18 | 0.17 | 9 | 1 | limb flies off: horse cartwheels toward that leg, rider thrown | 8 |
+| lowerFL | upperFL | 8 | 0.15 | 8 | 1 | limb flies off: horse cartwheels toward that leg, rider thrown | 6 |
+| upperFR | barrel | 18 | 0.17 | 9 | 1 | limb flies off: horse cartwheels toward that leg, rider thrown | 8 |
+| lowerFR | upperFR | 8 | 0.15 | 8 | 1 | limb flies off: horse cartwheels toward that leg, rider thrown | 6 |
+| upperBL | croup | 20 | 0.17 | 9 | 1 | limb flies off: horse cartwheels toward that leg, rider thrown | 8 |
+| lowerBL | upperBL | 8 | 0.15 | 8 | 1 | limb flies off: horse cartwheels toward that leg, rider thrown | 6 |
+| upperBR | croup | 20 | 0.17 | 9 | 1 | limb flies off: horse cartwheels toward that leg, rider thrown | 8 |
+| lowerBR | upperBR | 8 | 0.15 | 8 | 1 | limb flies off: horse cartwheels toward that leg, rider thrown | 6 |
+| pelvis | barrel | 14 | 0.2 | 10 | 1 | kill: rider thrown off; GUT SHOT | 8 |
+| torso | pelvis | 30 | 0.4 | 11 | 2 | counts hits; then rider off | 5 |
+| neck | torso | 2 | 0.12 | 2 | 1 | kill: head flies clean, high; NECK SHOT | 14 |
+| head | neck | 5 | 0.16 | 1 | 1 | kill: head pops; HEADSHOT | 18 |
+| hat | head | 0.5 | 0.14 | 0 | 1 | hat shot: hat spins off (first of a gang boomerangs to the rack); rider bolts | - |
+| upperArmL | torso | 4 | 0.12 | 6 | 1 | limb flies off: rider drops the bow, bolts | 6 |
+| lowerArmL | upperArmL | 3 | 0.11 | 6 | 1 | limb flies off: rider drops the bow, bolts | 5 |
+| upperArmR | torso | 4 | 0.12 | 6 | 1 | limb flies off: rider drops the bow, bolts | 6 |
+| lowerArmR | upperArmR | 3 | 0.11 | 6 | 1 | limb flies off: rider drops the bow, bolts | 5 |
+| upperLegL | pelvis | 10 | 0.14 | 7 | 1 | limb flies off: rider slumps, falls off in 0.9 s | 7 |
+| lowerLegL | upperLegL | 5 | 0.12 | 7 | 1 | limb flies off: rider slumps, falls off in 0.9 s | 5 |
+| upperLegR | pelvis | 10 | 0.14 | 7 | 1 | limb flies off: rider slumps, falls off in 0.9 s | 7 |
+| lowerLegR | upperLegR | 5 | 0.12 | 7 | 1 | limb flies off: rider slumps, falls off in 0.9 s | 5 |
+
+## §P. Asset standard (3 Nov)
+- Name the technique, not the vibe: "a tree of rigid parts joined by hinges; a hit breaks the joint" beats "Fallout gore".
+- Reference clips go in `references/` (never shipped); "match the timing and exaggeration of this clip" beats description.
+- Data, not code: every rig, reaction and tunable in a table Mike can edit.
+- Models are code-built (boxes, cylinders, painted textures) while the look wants that. When a thing needs more (a sculpted face, cloth), Claude Code writes a Blender script that builds, rigs and exports it as glTF.
+
+## §Q. The look, amended (3 Nov, after seeing §J in play) — built ref 0.6
+- Less low-poly: round things smooth-shaded with more sides (boiler 24, wheels 28, trees 10), terrain at 6 m cells, textures filtered with mipmaps and anisotropy, a 720-line frame with antialiasing. The palette, the navy shade and the cobalt sky stay.
+
+## §R. Day and night, seed and climate (3 Nov; from Torchfire) — built ref 0.6
+- Torchfire's 144-minute day. The sun crosses the sky; dusk goes violet with a warm band; night is one blue world (sky #050938, mist #153695), stars out, a moon opposite the sun, the headlamp lit ahead of the engine. Night is more dangerous: two more riders. A new run starts at 07:00. The stats panel shows the time; tapping it jumps three hours (for testing).
+- Everything derives from a seed (shown in the stats; `?seed=N` in the address replays it): the line's curves, each chunk's decorations, each town. Biomes are no longer a fixed cycle: a temperature and a moisture drift along the line and each region takes the biome nearest its climate (Whittaker-style), never the same as the last.
+
+## §S. From the parallel session's 0.6 (built ref 0.6; Mike to confirm each)
+A second chat built these into the same artifact on 3 Nov and they are kept in the merge: a conductor in the cab who drives and feeds the fire (talk to him from the front of the tender); crouch (Shift / button) behind plank parapets on the roofs; hits shove you and a hard hit up top throws you off the train; on foot you can fire a grappling hook (item 2) to reel back aboard, or walk to the water stop or town where the conductor waits; a camera jolt on hits. None of these are locked by Mike in this doc yet.
+
+## §T. Hats you can wear (3 Nov) — built ref 0.6
+- A racked hat keeps the arrow that took it. In the hat car, look at a hat and press Grab (or tap it) to wear it: a brim at the top of your view. Grab again pulls the arrow out of it. Wearing another swaps them back to their pegs.
+
 ## §Z. The queue (order of work for Claude Code)
-1. Port the reference build's feel into `src/`, feature by feature, keeping the repo's module layout: §B archery (speeds, zero, immediate redraw, trails, crosshair), §C walking and phone controls, §G the curving line and regions, §D the four cars and the surge, §E–§F riders and gore, §H hats, §I HUD, §J look. Stop and explain after each.
+1. Port the reference build's feel into `src/`, feature by feature, keeping the repo's module layout: §B/§L archery, §C/§M walking and phone controls, §G/§R the seeded line, climate biomes and the day, §D/§K/§N the four cars, the engine and the surge, §E/§O riders and gore (as data), §H/§T hats, §I HUD, §J/§Q look, §S the conductor, crouch, knock-off and hook. Stop and explain after each.
 2. Deploy to GitHub Pages on every push to `main`, so Mike plays from a link on his phone.
 3. The cab and firebox: the coal run continues forward from the tender, scoop then throw in the firebox.
 4. The first town stop: get off, walk one street, a store that restocks arrows.
