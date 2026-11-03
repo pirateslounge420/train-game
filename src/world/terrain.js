@@ -1,299 +1,397 @@
 import * as THREE from 'three';
-import { fbm, noise2, hash } from './noise.js';
 import { flat } from '../core/materials.js';
-import { mulberry32, smoothstep } from '../core/math.js';
+import {
+  trackAt, trackNear, biomeParams, biomeOf, regionAt, regionStart, ensureRegions, tunnelNear, townNear,
+  rngFor, vnoise, fbm, smooth, lerp, cellKey, cellOf, TRK_STEP,
+} from './line.js';
 
-// The world is built from 100 m long "chunks" laid along the track.
-// The train runs toward -Z. New chunks are made ahead and old ones
-// behind are thrown away, so the land never ends.
-export const CHUNK = 100;
-const AHEAD = 10; // chunks kept in front of the train
-const BEHIND = 3; // chunks kept behind it
-const HALF_WIDTH = 440;
+// The country along the line (§G; ported from reference 0.7): 120 m squares
+// of ground in a corridor around the track, and the track itself in 80 m
+// pieces (bed, rails, ties, telegraph poles, towns and tunnels). Pieces are
+// built ahead of the train and thrown away behind it.
 
-export const RAIL_TOP = 0.5;
-export const GAUGE = 1.435;
+export const RAIL_TOP = 0.5; // the train's wheels sit on this
+const BED_Y = 0.3;
 
-// Height of the ground at any point. The strip near the track is nearly
-// flat (that's where bandits ride); hills and mesas rise further out.
+// Height of the ground anywhere. Flat by the line (that's where riders
+// gallop), hills further out, mountains over the tunnels.
+const _tn = { d: 0, s: 0 };
 export function groundHeight(x, z) {
-  const ax = Math.abs(x);
-  const far = smoothstep(25, 150, ax);
-  const bed = smoothstep(3.5, 9, ax);
-  let h = fbm(x * 0.0032 + 17.3, z * 0.0032, 4) * 24 * far + far * 9;
-  h += fbm(x * 0.024 + 3.1, z * 0.024, 3) * (0.45 + far * 3);
-  return h * bed;
+  const T = trackNear(x, z, _tn);
+  const dist = T.d, s = T.s;
+  const p = biomeParams(s);
+  let h = (fbm(x * 0.011 + 37.1, z * 0.011 + 11.3, 3) - 0.5) * 2 * p.amp * smooth(8, 42, dist);
+  const m = fbm(x * 0.004 + 5.2, z * 0.0035 + 2.7, 3);
+  h += p.far * Math.pow(smooth(80, 230, dist), 1.4) * Math.pow(m, 1.6) * 1.4;
+  h *= smooth(5.5, 16, dist);
+  const tun = tunnelNear(s, 80);
+  if (tun) {
+    const inside = Math.min(s - tun.s0, tun.s1 - s);
+    const mtn = 46 * smooth(-6, 14, inside) * smooth(13, 30, dist) * (1 - smooth(120, 240, dist)) * (0.82 + 0.18 * vnoise(x * 0.03, z * 0.03));
+    h = Math.max(h, mtn);
+    if (inside > 0 && dist < 14) h = lerp(h, -2.5, smooth(0, 8, inside));
+  }
+  return h;
 }
 
-// Column positions across the track: fine near the rails, coarse far away.
-const XS = (() => {
-  const xs = [];
-  let x = -HALF_WIDTH;
-  while (x < HALF_WIDTH) {
-    xs.push(x);
-    const ax = Math.abs(x);
-    x += ax < 45 ? 4 : ax < 130 ? 10 : 24;
+const tmpC = new THREE.Color(), tmpC2 = new THREE.Color();
+function biomeColor(b, x, z, out) {
+  const n = vnoise(x * 0.07 + 3, z * 0.07 + 9);
+  const f = fbm(x * 0.012 + 1.3, z * 0.012 + 4.1, 2);
+  out.copy(f > 0.6 ? b.g3 : n > 0.52 ? b.g1 : b.g2);
+}
+function faceColor(x, z, h, out) {
+  const T = trackNear(x, z, _tn);
+  const p = biomeParams(T.s);
+  const k = vnoise(x * 0.21 + 8, z * 0.21 + 1);
+  if (h > 7 && tunnelNear(T.s, 100)) {
+    out.copy(p.a.rock).lerp(p.b.rock, p.t).multiplyScalar(0.85 + k * 0.3);
+    return;
   }
-  xs.push(HALF_WIDTH);
-  return xs;
+  biomeColor(p.a, x, z, tmpC);
+  biomeColor(p.b, x, z, tmpC2);
+  out.copy(tmpC).lerp(tmpC2, p.t).multiplyScalar(0.92 + k * 0.2);
+}
+
+// ---- scenery models: one merged, vertex-coloured mesh each -----------------
+function mergeColored(parts) {
+  const pos = [], nor = [], col = [];
+  for (const p of parts) {
+    const g = p.geo.index ? p.geo.toNonIndexed() : p.geo;
+    g.computeVertexNormals();
+    const pa = g.attributes.position.array, na = g.attributes.normal.array;
+    for (let i = 0; i < pa.length; i++) {
+      pos.push(pa[i]);
+      nor.push(na[i]);
+    }
+    for (let i = 0; i < pa.length / 3; i++) col.push(p.color.r, p.color.g, p.color.b);
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return out;
+}
+const C = (h) => new THREE.Color(h);
+const DECO = (() => {
+  const D = {};
+  const canopy = new THREE.ConeGeometry(1.7, 4.4, 10).translate(0, 3.3, 0);
+  const trunk = new THREE.CylinderGeometry(0.2, 0.28, 1.5, 5).translate(0, 0.7, 0);
+  D.tree = mergeColored([{ geo: trunk, color: C(0x4a2e1a) }, { geo: canopy, color: C(0x3f8a2a) }]);
+  const p1 = new THREE.ConeGeometry(1.3, 3.4, 10).translate(0, 2.6, 0);
+  const p2 = new THREE.ConeGeometry(1.0, 3.0, 10).translate(0, 4.6, 0);
+  const pt = new THREE.CylinderGeometry(0.18, 0.25, 1.3, 5).translate(0, 0.6, 0);
+  D.pine = mergeColored([{ geo: pt, color: C(0x3a2416) }, { geo: p1, color: C(0x1c5a2a) }, { geo: p2, color: C(0x246a30) }]);
+  const cac = [
+    new THREE.CylinderGeometry(0.3, 0.36, 3.4, 10).translate(0, 1.7, 0),
+    new THREE.BoxGeometry(0.9, 0.28, 0.28).translate(0.45, 1.7, 0),
+    new THREE.CylinderGeometry(0.16, 0.16, 1.3, 5).translate(0.78, 2.3, 0),
+    new THREE.BoxGeometry(0.8, 0.26, 0.26).translate(-0.4, 1.2, 0),
+    new THREE.CylinderGeometry(0.15, 0.15, 1.0, 5).translate(-0.68, 1.7, 0),
+  ];
+  D.cactus = mergeColored(cac.map((geo) => ({ geo, color: C(0x3f8a34) })));
+  D.rock = mergeColored([{ geo: new THREE.DodecahedronGeometry(1.2, 0).scale(1, 0.65, 1).translate(0, 0.4, 0), color: C(0xffffff) }]);
+  D.bush = mergeColored([{ geo: new THREE.IcosahedronGeometry(0.9, 0).scale(1, 0.7, 1).translate(0, 0.5, 0), color: C(0x4a8a2e) }]);
+  const ms1 = new THREE.CylinderGeometry(1, 1.15, 0.6, 12).translate(0, 0.7, 0);
+  const ms2 = new THREE.CylinderGeometry(1.15, 1.4, 0.4, 12).translate(0, 0.2, 0);
+  D.mesa = mergeColored([{ geo: ms1, color: C(0xc06a3a) }, { geo: ms2, color: C(0x9a4e2a) }]);
+  return D;
 })();
-const Z_STEP = 5;
+const groundMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+const decoMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+const dummy = new THREE.Object3D();
 
-const SAND = [0xdcae74, 0xd5a36a, 0xe3b981, 0xd9a970];
-const ROCK = [0xb2593a, 0x9e4b30, 0xa85438];
-const _c = new THREE.Color();
-
-function faceColor(x, z, h, ny) {
-  const j = hash(Math.floor(x * 7.1), Math.floor(z * 3.3));
-  if (ny < 0.8) return ROCK[Math.floor(j * ROCK.length)];
-  if (h > 20) return j < 0.5 ? 0xc47a4c : 0xbb6e43;
-  if (Math.abs(x) < 3.2) return 0x9c7f5a; // dirt under the track
-  if (noise2(x * 0.05 + 40, z * 0.05) > 0.45) return j < 0.5 ? 0xa59c5c : 0x9a9355; // scrub
-  return SAND[Math.floor(j * SAND.length)];
-}
-
-function buildGround(z0) {
-  const pos = [];
-  const col = [];
-  const rows = CHUNK / Z_STEP;
-  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
-  const n = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
-  const pushTri = (p, q, r) => {
-    e1.subVectors(q, p);
-    e2.subVectors(r, p);
-    n.crossVectors(e1, e2).normalize();
-    const cx = (p.x + q.x + r.x) / 3;
-    const cz = (p.z + q.z + r.z) / 3 + z0;
-    const ch = (p.y + q.y + r.y) / 3;
-    _c.setHex(faceColor(cx, cz, ch, n.y));
-    const shade = 0.94 + hash(Math.floor(cx * 13), Math.floor(cz * 11)) * 0.1;
-    for (const v of [p, q, r]) {
-      pos.push(v.x, v.y, v.z);
-      col.push(_c.r * shade, _c.g * shade, _c.b * shade);
-    }
-  };
-  const h = (x, lz) => groundHeight(x, lz + z0);
-  for (let j = 0; j < rows; j++) {
-    const za = j * Z_STEP;
-    const zb = za + Z_STEP;
-    for (let i = 0; i < XS.length - 1; i++) {
-      const xa = XS[i];
-      const xb = XS[i + 1];
-      const A = new THREE.Vector3(xa, h(xa, za), za);
-      const B = new THREE.Vector3(xb, h(xb, za), za);
-      const C = new THREE.Vector3(xb, h(xb, zb), zb);
-      const D = new THREE.Vector3(xa, h(xa, zb), zb);
-      pushTri(A, D, B);
-      pushTri(B, D, C);
-    }
+// ---- ground chunks -----------------------------------------------------------
+const CH = 120, SEG = 20; // 6 m cells (§Q)
+function makeChunk(cx, cz) {
+  const g = new THREE.Group();
+  const x0 = cx * CH, z0 = cz * CH;
+  const geo = new THREE.PlaneGeometry(CH, CH, SEG, SEG).rotateX(-Math.PI / 2);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, groundHeight(x0 + p.getX(i), z0 + p.getZ(i)));
+  const ng = geo.toNonIndexed();
+  ng.computeVertexNormals();
+  geo.dispose();
+  const pa = ng.attributes.position, col = new Float32Array(pa.count * 3);
+  for (let i = 0; i < pa.count; i += 3) {
+    const x = (pa.getX(i) + pa.getX(i + 1) + pa.getX(i + 2)) / 3;
+    const z = (pa.getZ(i) + pa.getZ(i + 1) + pa.getZ(i + 2)) / 3;
+    const h = (pa.getY(i) + pa.getY(i + 1) + pa.getY(i + 2)) / 3;
+    faceColor(x0 + x, z0 + z, h, tmpC);
+    for (let j = 0; j < 3; j++) col.set([tmpC.r, tmpC.g, tmpC.b], (i + j) * 3);
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  geo.computeVertexNormals();
-  return geo;
+  ng.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const ground = new THREE.Mesh(ng, groundMat);
+  ground.receiveShadow = true;
+  g.add(ground);
+
+  // Scenery, by the biome at the chunk's centre.
+  const bio = biomeOf(regionAt(trackNear(x0, z0, _tn).s));
+  const R = rngFor(cx, cz, 2), rand = (a, b) => a + R() * (b - a);
+  for (const key of Object.keys(bio.deco)) {
+    const want = bio.deco[key];
+    if (!want) continue;
+    const mats = [], cols = [];
+    for (let i = 0; i < want * 2 && mats.length < want; i++) {
+      const lx = rand(-CH / 2, CH / 2), lz = rand(-CH / 2, CH / 2);
+      const wx = x0 + lx, wz = z0 + lz;
+      const T = trackNear(wx, wz, _tn);
+      const minD = key === 'mesa' ? 70 : key === 'tree' || key === 'pine' ? 11 : 8;
+      if (T.d < minD || townNear(T.s, 70)) continue;
+      const y = groundHeight(wx, wz);
+      if (y > 6 && tunnelNear(T.s, 100)) continue;
+      dummy.position.set(lx, y, lz);
+      dummy.rotation.set(0, rand(0, Math.PI * 2), 0);
+      if (key === 'mesa') {
+        const r = rand(12, 30);
+        dummy.scale.set(r, rand(10, 24), r * rand(0.7, 1.2));
+      } else {
+        const s = rand(0.7, 1.4);
+        dummy.scale.set(s, s * rand(0.85, 1.3), s);
+      }
+      dummy.updateMatrix();
+      mats.push(dummy.matrix.clone());
+      if (key === 'rock') cols.push(bio.rock.clone());
+      else if (key === 'tree' || key === 'bush') cols.push(new THREE.Color().setHSL(0.27 + R() * 0.06, 0.6, 0.3 + R() * 0.12));
+      else cols.push(new THREE.Color(0xffffff));
+    }
+    if (!mats.length) continue;
+    const im = new THREE.InstancedMesh(DECO[key], decoMat, mats.length);
+    mats.forEach((m, i) => {
+      im.setMatrixAt(i, m);
+      im.setColorAt(i, cols[i]);
+    });
+    im.castShadow = true;
+    g.add(im);
+  }
+  g.position.set(x0, 0, z0);
+  return { group: g, own: [ng] };
 }
 
-// ---- shared geometry for props -------------------------------------------
-const G = {
-  tie: new THREE.BoxGeometry(2.6, 0.14, 0.24),
-  rail: new THREE.BoxGeometry(0.08, 0.14, CHUNK),
-  ballast: new THREE.BoxGeometry(3.6, 0.3, CHUNK),
-  cactusTrunk: new THREE.CylinderGeometry(0.28, 0.34, 1, 6),
-  cactusArm: new THREE.CylinderGeometry(0.18, 0.2, 1, 6),
-  rock: new THREE.DodecahedronGeometry(1, 0),
-  bush: new THREE.IcosahedronGeometry(0.6, 0),
-  pole: new THREE.CylinderGeometry(0.1, 0.13, 7.5, 5),
-  crossbar: new THREE.BoxGeometry(1.6, 0.1, 0.1),
-  wire: new THREE.BoxGeometry(0.025, 0.025, CHUNK),
-  mesa: new THREE.CylinderGeometry(1, 1.15, 1, 7),
-  mesaCap: new THREE.CylinderGeometry(1.03, 1, 0.08, 7),
+// ---- track pieces ------------------------------------------------------------
+const TP_LEN = 80;
+function stripGeo(rows, cols, getP) {
+  const pos = [], idx = [], p = new THREE.Vector3();
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) {
+      getP(r, c, p);
+      pos.push(p.x, p.y, p.z);
+    }
+  for (let r = 0; r < rows - 1; r++)
+    for (let c = 0; c < cols - 1; c++) {
+      const a = r * cols + c, b = a + 1, d = a + cols, e = d + 1;
+      idx.push(a, d, b, b, d, e);
+    }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  const ng = g.toNonIndexed();
+  ng.computeVertexNormals();
+  g.dispose();
+  return ng;
+}
+const mats = {
+  bed: flat(0x6e6258),
+  rail: flat(0x2e2a28, { metalness: 0.5, roughness: 0.5 }),
+  tie: flat(0x4a3220),
+  pole: flat(0x3a2a1c),
+  tube: new THREE.MeshStandardMaterial({ color: 0x2a2e3a, flatShading: true, roughness: 1, side: THREE.DoubleSide }),
+  stone: flat(0x4a5468),
+  dark: flat(0x06102a),
+  lamp: new THREE.MeshBasicMaterial({ color: 0xffb347 }),
+  roof: flat(0x2a2430),
+  roof2: flat(0x2e2834),
+  planks: flat(0x7a6a58),
+  window: flat(0x1a3ce8),
 };
-const groundMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 });
-const M = {
-  tie: flat(0x5a4030),
-  rail: flat(0x6d6a66, { metalness: 0.6, roughness: 0.4 }),
-  ballast: flat(0x8d7e6d),
-  cactus: flat(0x5c7a3a),
-  rock: flat(0xa0583a),
-  rock2: flat(0x8a6a4e),
-  bush: flat(0x8a8a4a),
-  pole: flat(0x6b4b30),
-  wire: flat(0x2a2a2a),
-  mesa: flat(0xb8643c),
-  mesaTop: flat(0xc98a56),
-};
+const tieGeo = new THREE.BoxGeometry(2.5, 0.14, 0.26);
+const poleGeo = new THREE.CylinderGeometry(0.1, 0.13, 7, 5);
+const barGeo = new THREE.BoxGeometry(1.4, 0.12, 0.12);
 
-function shadowed(m, cast = true) {
-  m.castShadow = cast;
-  m.receiveShadow = true;
+function box(w, h, d, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), typeof mat === 'number' ? flat(mat) : mat);
+  m.position.set(x, y, z);
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+function cylinder(rt, rb, h, seg, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), typeof mat === 'number' ? flat(mat) : mat);
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  parent.add(m);
   return m;
 }
 
-function makeCactus(rng) {
+function makePiece(k) {
   const g = new THREE.Group();
-  const h = 2.5 + rng() * 3;
-  const trunk = shadowed(new THREE.Mesh(G.cactusTrunk, M.cactus));
-  trunk.scale.set(1, h, 1);
-  trunk.position.y = h / 2;
-  g.add(trunk);
-  const arms = Math.floor(rng() * 3);
-  for (let i = 0; i < arms; i++) {
-    const side = i === 0 ? 1 : -1;
-    const ay = h * (0.35 + rng() * 0.3);
-    const out = shadowed(new THREE.Mesh(G.cactusArm, M.cactus));
-    out.scale.set(1, 0.7, 1);
-    out.rotation.z = (Math.PI / 2) * side;
-    out.position.set(-side * 0.5, ay, 0);
-    const up = shadowed(new THREE.Mesh(G.cactusArm, M.cactus));
-    const uh = 0.8 + rng() * 1.2;
-    up.scale.set(1, uh, 1);
-    up.position.set(-side * 0.82, ay + uh / 2 - 0.08, 0);
-    g.add(out, up);
+  const own = [];
+  const sA = k * TP_LEN, sB = sA + TP_LEN, n = TP_LEN / TRK_STEP;
+  const P = [];
+  for (let i = 0; i <= n; i++) P.push(trackAt(sA + i * TRK_STEP, { x: 0, z: 0, th: 0 }));
+  const across = (t, w, y, o) => o.set(t.x + Math.cos(t.th) * w, y, t.z + Math.sin(t.th) * w);
+  const bed = stripGeo(n + 1, 2, (r, c, o) => across(P[r], c ? 2.7 : -2.7, BED_Y, o));
+  own.push(bed);
+  const bm = new THREE.Mesh(bed, mats.bed);
+  bm.receiveShadow = true;
+  g.add(bm);
+  for (const off of [-0.72, 0.72]) {
+    const rail = stripGeo(n + 1, 4, (r, c, o) => {
+      const w = off + (c === 0 || c === 1 ? -0.05 : 0.05);
+      across(P[r], w, c === 0 || c === 3 ? BED_Y + 0.07 : RAIL_TOP, o);
+    });
+    own.push(rail);
+    g.add(new THREE.Mesh(rail, mats.rail));
   }
-  g.rotation.y = rng() * Math.PI * 2;
-  return g;
-}
-
-function buildChunk(index) {
-  const z0 = index * CHUNK;
-  const group = new THREE.Group();
-  group.position.z = z0;
-  const rng = mulberry32(index * 9973 + 12345);
-
-  const ground = new THREE.Mesh(buildGround(z0), groundMat);
-  ground.receiveShadow = true;
-  group.add(ground);
-
-  // Track: ballast, sleepers (ties) and two rails.
-  const ballast = shadowed(new THREE.Mesh(G.ballast, M.ballast), false);
-  ballast.position.set(0, 0.15, CHUNK / 2);
-  group.add(ballast);
-
-  const tieCount = Math.floor(CHUNK / 0.65);
-  const ties = new THREE.InstancedMesh(G.tie, M.tie, tieCount);
-  const m4 = new THREE.Matrix4();
-  for (let i = 0; i < tieCount; i++) {
-    m4.makeTranslation(0, 0.37, i * 0.65 + 0.3);
-    ties.setMatrixAt(i, m4);
+  const nt = Math.floor(TP_LEN / 0.7);
+  const ties = new THREE.InstancedMesh(tieGeo, mats.tie, nt);
+  for (let i = 0; i < nt; i++) {
+    const t = trackAt(sA + i * 0.7 + 0.35);
+    dummy.position.set(t.x, BED_Y + 0.07, t.z);
+    dummy.rotation.set(0, -t.th, 0);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    ties.setMatrixAt(i, dummy.matrix);
   }
   ties.receiveShadow = true;
-  group.add(ties);
-  for (const s of [-1, 1]) {
-    const rail = shadowed(new THREE.Mesh(G.rail, M.rail), false);
-    rail.position.set((s * (GAUGE + 0.07)) / 2, RAIL_TOP - 0.07, CHUNK / 2);
-    group.add(rail);
+  g.add(ties);
+
+  const tun = tunnelNear(sA, 0) || tunnelNear(sB, 0);
+  // Telegraph poles on the left, 40 m apart (none inside a tunnel).
+  for (let i = 0; i < 2; i++) {
+    const s = sA + 20 + i * 40;
+    if (tun && s > tun.s0 && s < tun.s1) continue;
+    const t = trackAt(s);
+    const px = t.x - Math.cos(t.th) * 7.5, pz = t.z - Math.sin(t.th) * 7.5;
+    const pole = new THREE.Mesh(poleGeo, mats.pole);
+    pole.position.set(px, 3.5, pz);
+    pole.castShadow = true;
+    const bar = new THREE.Mesh(barGeo, mats.pole);
+    bar.position.set(px, 6.6, pz);
+    bar.rotation.y = -t.th;
+    g.add(pole, bar);
   }
 
-  // Telegraph poles and wires on the left side of the line.
-  for (const pz of [0, 50]) {
-    const pole = shadowed(new THREE.Mesh(G.pole, M.pole));
-    pole.position.set(-5.5, groundHeight(-5.5, z0 + pz) + 3.6, pz);
-    const bar = shadowed(new THREE.Mesh(G.crossbar, M.pole));
-    bar.position.set(-5.5, pole.position.y + 3.2, pz);
-    group.add(pole, bar);
-  }
-  for (const wx of [-6.1, -4.9]) {
-    const wire = new THREE.Mesh(G.wire, M.wire);
-    wire.position.set(wx, groundHeight(-5.5, z0) + 6.85, CHUNK / 2);
-    group.add(wire);
-  }
-
-  // Scattered cacti, rocks and scrub – kept out of the bandits' riding lane.
-  const scatter = (count, minX, maxX, make) => {
-    for (let i = 0; i < count; i++) {
-      const side = rng() < 0.5 ? -1 : 1;
-      const x = side * (minX + rng() * (maxX - minX));
-      const lz = rng() * CHUNK;
-      const obj = make();
-      obj.position.set(x, groundHeight(x, z0 + lz) - 0.05, lz);
-      group.add(obj);
+  // The tunnel: a stone bore with lanterns, and a cliff portal at each end.
+  if (tun) {
+    const i0 = Math.max(0, Math.ceil((tun.s0 - sA) / TRK_STEP)), i1 = Math.min(n, Math.floor((tun.s1 - sA) / TRK_STEP));
+    if (i1 > i0) {
+      const arch = [];
+      for (let a = 0; a <= 8; a++) {
+        const ang = Math.PI - (a * Math.PI) / 8;
+        arch.push([Math.cos(ang) * 3.7, 1.3 + Math.sin(ang) * 3.7]);
+      }
+      const ring = [[-3.7, -0.5], [-3.7, 1.3]].concat(arch.slice(1, 8)).concat([[3.7, 1.3], [3.7, -0.5], [0, -0.45], [-3.7, -0.5]]);
+      const tube = stripGeo(i1 - i0 + 1, ring.length, (r, c, o) => across(P[i0 + r], ring[c][0], ring[c][1], o));
+      own.push(tube);
+      g.add(new THREE.Mesh(tube, mats.tube));
+      for (let i = i0; i <= i1; i += 12)
+        for (const side of [-1, 1]) {
+          const l = box(0.18, 0.28, 0.18, mats.lamp, 0, 0, 0, g);
+          across(P[i], 3.45 * side, 2.6, l.position);
+        }
     }
-  };
-  scatter(7, 24, 220, () => makeCactus(rng));
-  scatter(6, 22, 260, () => {
-    const r = shadowed(new THREE.Mesh(G.rock, rng() < 0.5 ? M.rock : M.rock2));
-    const s = 0.6 + rng() * 2.4;
-    r.scale.set(s * (0.8 + rng() * 0.6), s * (0.5 + rng() * 0.5), s);
-    r.rotation.set(rng() * 3, rng() * 3, rng() * 3);
-    return r;
-  });
-  scatter(10, 20, 120, () => {
-    const b = shadowed(new THREE.Mesh(G.bush, M.bush));
-    const s = 0.5 + rng() * 0.9;
-    b.scale.set(s * 1.3, s * 0.7, s * 1.2);
-    return b;
-  });
-  // The odd small rock right in the riding lane, for a sense of speed.
-  scatter(3, 6, 20, () => {
-    const r = shadowed(new THREE.Mesh(G.rock, M.rock2));
-    r.scale.setScalar(0.2 + rng() * 0.25);
-    r.rotation.set(rng() * 3, rng() * 3, rng() * 3);
-    return r;
-  });
-
-  // Distant mesas and buttes.
-  if (rng() < 0.55) {
-    const side = rng() < 0.5 ? -1 : 1;
-    const x = side * (230 + rng() * 170);
-    const lz = rng() * CHUNK;
-    const height = 25 + rng() * 55;
-    const radius = 20 + rng() * 55;
-    const base = groundHeight(x, z0 + lz) - 3;
-    const mesa = shadowed(new THREE.Mesh(G.mesa, M.mesa), false);
-    mesa.scale.set(radius, height, radius * (0.6 + rng() * 0.6));
-    mesa.position.set(x, base + height / 2, lz);
-    mesa.rotation.y = rng() * 3;
-    const cap = shadowed(new THREE.Mesh(G.mesaCap, M.mesaTop), false);
-    cap.scale.copy(mesa.scale);
-    cap.scale.y = height;
-    cap.position.set(x, base + height + 0.02 * height, lz);
-    cap.rotation.y = mesa.rotation.y;
-    group.add(mesa, cap);
+    for (const sp of [tun.s0, tun.s1]) {
+      if (sp < sA || sp >= sB) continue;
+      const t = trackAt(sp);
+      const f = new THREE.Group();
+      f.position.set(t.x, 0, t.z);
+      f.rotation.y = -t.th;
+      for (const side of [-1, 1]) box(2.4, 8.5, 3.2, mats.stone, side * 4.9, 4.0, 0, f);
+      box(12.2, 4.4, 3.2, mats.stone, 0, 7.2, 0, f);
+      box(13.5, 1.0, 3.6, mats.stone, 0, 9.9, 0, f);
+      box(0.6, 0.6, 0.3, mats.dark, 0, 6.2, -1.7, f);
+      g.add(f);
+    }
   }
+  // A town at the start of every region.
+  ensureRegions(regionAt(sB) + 1);
+  regionStart.forEach((D, i) => {
+    if (D < sA || D >= sB) return;
+    const t = trackAt(D);
+    const town = makeTown(i);
+    town.position.set(t.x, 0, t.z);
+    town.rotation.y = -t.th;
+    g.add(town);
+  });
+  return { group: g, own };
+}
 
-  return group;
+// A town: platform, station with its roof, water tower, a few houses (§G).
+function makeTown(i) {
+  const t = new THREE.Group();
+  const R = rngFor(i, 3, 3), rand = (a, b) => a + R() * (b - a), pick = (a) => a[Math.floor(R() * a.length)];
+  box(4, 0.9, 26, mats.planks, 3.9, 0.45, 0, t);
+  box(7, 4.5, 12, pick([0x9a4a2e, 0x7a5a3e, 0x8a6a48]), 8.6, 2.25, 0, t);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 4), mats.roof);
+  roof.rotation.y = Math.PI / 4;
+  roof.scale.set(5.6, 2.4, 9.6);
+  roof.position.set(8.6, 5.7, 0);
+  t.add(roof);
+  box(2.2, 2.6, 0.2, mats.dark, 5.0, 1.3, -2.5, t);
+  box(1.2, 1.4, 0.2, mats.window, 5.0, 2.6, 2.6, t);
+  const wt = new THREE.Group();
+  wt.position.set(-6.5, 0, 9);
+  for (const [x, z] of [[-1.1, -1.1], [1.1, -1.1], [-1.1, 1.1], [1.1, 1.1]]) box(0.22, 5, 0.22, 0x4a3626, x, 2.5, z, wt);
+  cylinder(1.7, 1.7, 2.6, 8, 0x6a4a2e, 0, 6.2, 0, wt);
+  cylinder(0.1, 2.0, 1.1, 8, mats.roof, 0, 8.0, 0, wt);
+  t.add(wt);
+  for (let h = 0; h < 5; h++) {
+    const side = h % 2 ? 1 : -1;
+    const x = side * rand(13, 30), z = rand(-30, 30);
+    const w = rand(4, 7), d = rand(5, 9), hh = rand(3, 4.2);
+    box(w, hh, d, pick([0x7a5a3e, 0x8e6a46, 0x5e4a36, 0x9a7a52]), x, hh / 2, z, t);
+    const r = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 4), mats.roof2);
+    r.rotation.y = Math.PI / 4;
+    r.scale.set(w * 0.8, rand(1.6, 2.4), d * 0.8);
+    r.position.set(x, hh + r.scale.y / 2, z);
+    t.add(r);
+    box(0.1, 1.8, 0.9, mats.dark, x - (side * w) / 2, 0.9, z, t);
+  }
+  return t;
+}
+
+function dispose(c) {
+  c.group.parent?.remove(c.group);
+  for (const g of c.own) g.dispose();
+  c.group.traverse((o) => {
+    if (o.isInstancedMesh) o.dispose();
+    else if (o.isMesh && o.geometry !== tieGeo && o.geometry !== poleGeo && o.geometry !== barGeo && !c.own.includes(o.geometry) && !Object.values(DECO).includes(o.geometry)) o.geometry.dispose();
+  });
 }
 
 export class Terrain {
   constructor(scene) {
     this.scene = scene;
     this.chunks = new Map();
+    this.pieces = new Map();
   }
 
-  // Keep chunks around the train. `maxBuild` limits how many new chunks we
-  // make per frame so the game never stutters.
-  update(trainZ, maxBuild = 1) {
-    const center = Math.floor(trainZ / CHUNK);
-    const first = center - AHEAD;
-    const last = center + BEHIND;
-    for (const [idx, g] of this.chunks) {
-      if (idx < first || idx > last) {
-        this.scene.remove(g);
-        g.traverse((o) => {
-          if (o.isMesh && o.geometry.attributes.color) o.geometry.dispose();
-          if (o.isInstancedMesh) o.dispose();
-        });
-        this.chunks.delete(idx);
-      }
+  // Keep the country built from 160 m behind the train to 480 m ahead.
+  // `maxBuild` limits new ground squares per frame so the game never stutters.
+  update(s, maxBuild = 3) {
+    const want = new Set(), wantP = new Set();
+    for (let d = s - 160; d <= s + 480; d += 40) {
+      const t = trackAt(d);
+      const cx = Math.floor(t.x / CH), cz = Math.floor(t.z / CH);
+      for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) want.add(cellKey(cx + dx, cz + dz));
     }
-    let built = 0;
-    // Build nearest first.
-    for (let idx = center + 1; idx >= first && built < maxBuild; idx--) {
-      if (!this.chunks.has(idx)) {
-        const g = buildChunk(idx);
-        this.scene.add(g);
-        this.chunks.set(idx, g);
-        built++;
-      }
+    for (let k = Math.floor((s - 160) / TP_LEN); k <= Math.floor((s + 480) / TP_LEN); k++) wantP.add(k);
+    let made = 0;
+    for (const key of want) {
+      if (this.chunks.has(key)) continue;
+      const c = makeChunk(...cellOf(key));
+      this.scene.add(c.group);
+      this.chunks.set(key, c);
+      if (++made >= maxBuild) break;
     }
-    for (let idx = center + 2; idx <= last && built < maxBuild; idx++) {
-      if (!this.chunks.has(idx)) {
-        const g = buildChunk(idx);
-        this.scene.add(g);
-        this.chunks.set(idx, g);
-        built++;
-      }
+    for (const [key, c] of this.chunks) if (!want.has(key)) (dispose(c), this.chunks.delete(key));
+    for (const k of wantP) {
+      if (this.pieces.has(k)) continue;
+      const c = makePiece(k);
+      this.scene.add(c.group);
+      this.pieces.set(k, c);
     }
+    for (const [k, c] of this.pieces) if (!wantP.has(k)) (dispose(c), this.pieces.delete(k));
   }
 }

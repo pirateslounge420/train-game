@@ -114,7 +114,7 @@ export class Bow {
   }
 
   fire(e) {
-    const { camera, arrows, train, sound } = this.game;
+    const { camera, arrows, sound } = this.game;
     const p = this.player;
     p.arrows--;
     const v0 = B.snapSpeed + (B.fullSpeed - B.snapSpeed) * e;
@@ -127,8 +127,8 @@ export class Bow {
     const alpha = Math.asin(clamp((CONFIG.gravity * zero) / (v0 * v0), 0, 1)) * 0.5;
     const axis = new THREE.Vector3(0, 1, 0).cross(dir).normalize();
     dir.applyAxisAngle(axis, -alpha);
-    // The arrow keeps the train's speed.
-    const vel = dir.multiplyScalar(v0).add(train.velocity);
+    // The arrow keeps the speed of the car you're standing on.
+    const vel = dir.multiplyScalar(v0).add(p.car.vel);
     arrows.spawn(from, vel, 'player');
     sound.twang(e);
     this.kick = 0.6 + 0.6 * e;

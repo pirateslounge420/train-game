@@ -1,16 +1,21 @@
 import * as THREE from 'three';
-import { CONFIG } from '../config.js';
 import { flat, PALETTE as P } from '../core/materials.js';
 import { placeBetween } from '../core/math.js';
 import { RAIL_TOP } from '../world/terrain.js';
+import { trackAt, forwardAt, rightAt, regionAt, regionSpeed, regionStart, ensureRegions } from '../world/line.js';
+
+const _up = new THREE.Vector3(0, 1, 0);
+const _tp = { x: 0, z: 0, th: 0 };
+const _pos = new THREE.Vector3();
+const _vel = new THREE.Vector3();
 
 // The train: locomotive, tender, boxcar and flatcar.
 //
 // Everything is built in "train space": the front of the locomotive points
-// toward -Z, the track centre is x = 0 and y = 0 is the ground. The whole
-// group then slides along the track. The player, stuck arrows and the
-// collision boxes all live in this same space, which is how the player
-// rides along instead of sliding off.
+// toward -Z, the track centre is x = 0 and y = 0 is the ground. Each car
+// then rides its own point of the curving line (see `place`). The player,
+// stuck arrows and the collision boxes live in their car's frame, which is
+// how the player rides along instead of sliding off.
 //
 // Layout along Z (front to back):
 //   locomotive  -23.9 .. -8.9   (cab floor 2.25, cab roof 4.45)
@@ -25,39 +30,165 @@ const DRIVER_Z = [-16.6, -14.7, -12.8];
 const MAIN_ROD = 2.9;
 const CYL_BACK_Z = -19.2;
 
+// Each car rides its own point on the line (§D, §G), so the train bends
+// through curves. A car's "frame" is the old train space above: every car
+// keeps the coordinates it was built in, and its own matrix places that
+// frame on the track. On a straight all four frames line up exactly.
+const CARS = [
+  { name: 'locomotive', z0: -24.0, z1: -8.9 },
+  { name: 'tender', z0: -8.9, z1: -2.0 },
+  { name: 'boxcar', z0: -2.0, z1: 11.0 },
+  { name: 'flatcar', z0: 11.0, z1: 24.0 },
+];
+const BRAKE = 2.4; // m/s² when pulling into a town
+const TOWN_STOP = 6; // seconds at each town (§G)
+
 export class Train {
   constructor(scene) {
-    this.group = new THREE.Group();
-    scene.add(this.group);
-    this.position = this.group.position;
-    this.speed = CONFIG.train.speed;
-    this.velocity = new THREE.Vector3(0, 0, -this.speed);
-    this.distance = 0;
+    this.scene = scene;
+    this.d = 0; // where frame z = 0 is on the line (metres from the first town)
+    this.speed = 0;
+    this.cruise = regionSpeed(0);
+    this.state = 'stop'; // run | brake | stop
+    this.stopT = 2.5;
+    this.nextTown = 0; // the town we're heading for (0: we start in it)
+    this.region = 0;
+    this.onArrive = null; // (town index) when the train stops in a town
+    this.onDepart = null;
 
-    this.colliders = []; // solid boxes { min, max } in train space
-    this.ladders = []; // climbable volumes { min, max }
     this.wheels = []; // { mesh, radius, phase }
     this.rodSides = [];
+    this.cars = CARS.map((c, i) => {
+      const group = new THREE.Group();
+      const inner = new THREE.Group();
+      const zc = (c.z0 + c.z1) / 2;
+      inner.position.z = -zc;
+      group.add(inner);
+      scene.add(group);
+      return { ...c, i, zc, group, inner, colliders: [], ladders: [], vel: new THREE.Vector3(), th: 0, inv: new THREE.Matrix4(), prevInv: new THREE.Matrix4() };
+    });
+    const build = (i, fn) => {
+      const car = this.cars[i];
+      this.group = car.inner;
+      this.colliders = car.colliders;
+      this.ladders = car.ladders;
+      fn.call(this);
+    };
+    build(0, this.buildLocomotive);
+    build(1, this.buildTender);
+    build(2, this.buildBoxcar);
+    build(3, this.buildFlatcar);
+    delete this.group;
+    delete this.colliders;
+    delete this.ladders;
 
-    this.buildLocomotive();
-    this.buildTender();
-    this.buildBoxcar();
-    this.buildFlatcar();
-
-    // Where the smoke comes out (train space).
+    // Where the smoke comes out (locomotive frame).
     this.stackTop = new THREE.Vector3(0, 5.95, -21.2);
+    this.place();
+    this.place(); // twice, so "last frame" is set too
+  }
+
+  get distance() {
+    return this.d;
+  }
+  get loco() {
+    return this.cars[0];
+  }
+
+  // Which car a frame position belongs to (by its z).
+  carAt(z) {
+    for (const c of this.cars) if (z < c.z1) return c;
+    return this.cars[this.cars.length - 1];
+  }
+
+  // Frame <-> world for one car.
+  toWorld(car, p, out = new THREE.Vector3()) {
+    return out.copy(p).applyMatrix4(car.inner.matrixWorld);
+  }
+  toLocal(car, p, out = new THREE.Vector3()) {
+    return out.copy(p).applyMatrix4(car.inv);
+  }
+  // A direction from a car's frame into the world, and back.
+  dirToWorld(car, v, out = new THREE.Vector3()) {
+    return out.copy(v).applyAxisAngle(_up, -car.th);
+  }
+  dirToLocal(car, v, out = new THREE.Vector3()) {
+    return out.copy(v).applyAxisAngle(_up, car.th);
+  }
+  // The line's forward and right at the middle of the train.
+  forward(out = new THREE.Vector3()) {
+    return forwardAt(trackAt(this.d, _tp).th, out);
+  }
+  right(out = new THREE.Vector3()) {
+    return rightAt(trackAt(this.d, _tp).th, out);
+  }
+  // The middle of the train in the world (frame origin, on the line).
+  get position() {
+    const t = trackAt(this.d, _tp);
+    return _pos.set(t.x, 0, t.z);
+  }
+  get velocity() {
+    return this.forward(_vel).multiplyScalar(this.speed);
+  }
+
+  place() {
+    for (const c of this.cars) {
+      c.prevInv.copy(c.inv);
+      const t = trackAt(this.d - c.zc, _tp);
+      c.th = t.th;
+      c.group.position.set(t.x, 0, t.z);
+      c.group.rotation.y = -t.th;
+      c.group.updateMatrixWorld(true);
+      c.inv.copy(c.inner.matrixWorld).invert();
+      forwardAt(t.th, c.vel).multiplyScalar(this.speed);
+    }
+  }
+
+  // Speed along the line: cruise for the region, brake into each town, stop
+  // there, and pull out again (§G; reference 0.7's updateTrain, without the
+  // surge, which is §K).
+  run(dt) {
+    this.region = regionAt(this.d);
+    ensureRegions(this.region + 2);
+    this.cruise = regionSpeed(this.region);
+    const townD = regionStart[this.nextTown];
+    if (this.state === 'run') {
+      const acc = 1.5;
+      if (this.speed < this.cruise) this.speed = Math.min(this.cruise, this.speed + acc * dt);
+      else this.speed = Math.max(this.cruise, this.speed - 2.5 * dt);
+      const rem = townD - this.d;
+      if (rem < (this.speed * this.speed) / (2 * BRAKE) + 6) this.state = 'brake';
+    }
+    if (this.state === 'brake') {
+      const rem = townD - this.d;
+      this.speed = Math.max(0, Math.min(this.speed, Math.sqrt(Math.max(0, 2 * BRAKE * rem))));
+      if (rem <= 0.25 || (this.speed < 0.2 && rem < 4)) {
+        this.speed = 0;
+        this.d = townD;
+        this.state = 'stop';
+        this.stopT = TOWN_STOP;
+        this.onArrive?.(this.nextTown);
+      }
+    }
+    if (this.state === 'stop') {
+      this.stopT -= dt;
+      if (this.stopT <= 0) {
+        this.state = 'run';
+        this.nextTown++;
+        this.onDepart?.();
+      }
+    }
+    this.d += this.speed * dt;
   }
 
   update(dt) {
-    const d = this.speed * dt;
-    this.position.z -= d;
-    this.distance += d;
-    this.velocity.set(0, 0, -this.speed);
+    this.run(dt);
+    this.place();
 
-    for (const w of this.wheels) w.mesh.rotation.x = -(this.distance / w.radius + w.phase);
+    for (const w of this.wheels) w.mesh.rotation.x = -(this.d / w.radius + w.phase);
 
     for (const side of this.rodSides) {
-      const phi = this.distance / DRIVER_R + side.phase;
+      const phi = this.d / DRIVER_R + side.phase;
       const dy = CRANK * Math.cos(phi);
       const dz = -CRANK * Math.sin(phi);
       // Coupling rod: ties the three driving wheels together.

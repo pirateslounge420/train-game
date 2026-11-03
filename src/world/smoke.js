@@ -29,9 +29,9 @@ export class Smoke {
       this.next = (this.next + 1) % COUNT;
       p.age = 0;
       p.m.visible = true;
-      p.m.position.copy(train.stackTop).add(train.position);
-      // Starts with the train's speed but air drag slows it quickly.
-      p.vel.set(rand(-0.6, 0.6), rand(3.5, 5), train.velocity.z * 0.9);
+      train.toWorld(train.loco, train.stackTop, p.m.position);
+      // Starts with the engine's speed but air drag slows it quickly.
+      p.vel.set(rand(-0.6, 0.6), rand(3.5, 5), 0).addScaledVector(train.loco.vel, 0.9);
       p.m.rotation.set(rand(0, 3), rand(0, 3), rand(0, 3));
       p.spin = rand(-1, 1);
     }

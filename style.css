@@ -265,3 +265,27 @@ body.touch #stats { left: max(18px, env(safe-area-inset-left)); }
 .card { max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; }
 #overlay { touch-action: pan-y; }
 .card { margin: 16px; }
+
+/* Town names and tunnel warnings (§G), as in reference 0.7. */
+#banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 18%;
+  text-align: center;
+  font-size: 30px;
+  text-shadow: 0 2px 0 #000, 0 0 18px rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  transition: opacity 0.4s;
+  padding: 0 16px;
+}
+#banner small {
+  display: block;
+  font-size: 15px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #e2aa3f;
+  margin-top: 4px;
+}
+#banner.on { opacity: 1; }
+#st-tod { pointer-events: auto; cursor: pointer; text-decoration: underline dotted; }

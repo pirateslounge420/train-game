@@ -138,8 +138,6 @@ export class ArrowSystem {
 
   update(dt) {
     const g = CONFIG.gravity;
-    const { train, player } = this.game;
-    const trainPrev = train.position.clone().addScaledVector(train.velocity, -dt);
 
     for (let i = this.flying.length - 1; i >= 0; i--) {
       const a = this.flying[i];
@@ -153,7 +151,7 @@ export class ArrowSystem {
       if (sp > 0) a.vel.multiplyScalar(Math.max(0, 1 - CONFIG.bow.drag * sp * dt));
       a.pos.addScaledVector(a.vel, dt);
       a.age += dt;
-      const hit = this.trace(p0, a.pos, trainPrev, a, dt);
+      const hit = this.trace(p0, a.pos, a, dt);
       if (hit) {
         this.resolveHit(a, hit, p0);
         this.removeFlying(i);
@@ -180,7 +178,7 @@ export class ArrowSystem {
   }
 
   // Find the first thing the segment p0->p1 hits.
-  trace(p0, p1, trainPrev, a, dt) {
+  trace(p0, p1, a, dt) {
     const { train, player, bandits } = this.game;
     let best = null;
     const consider = (h) => {
@@ -194,18 +192,21 @@ export class ArrowSystem {
       consider({ t: g0 <= 0 ? 0 : g0 / (g0 - g1), type: 'ground' });
     }
 
-    // Train (worked out in train space so the moving train is handled right)
-    const r0 = p0.clone().sub(trainPrev);
-    const r1 = p1.clone().sub(train.position);
-    for (const c of train.colliders) {
-      const h = segmentBox(r0, r1, c.min, c.max);
-      if (h) consider({ t: h.t, type: 'train', r0, r1 });
-    }
-
-    if (a.owner === 'enemy' && !player.dead) {
-      for (const b of player.hitBoxes()) {
-        const h = segmentBox(r0, r1, b.min, b.max);
-        if (h) consider({ t: h.t, type: 'player', head: b.head });
+    // Each car, worked out in its own frame (where it was last frame to
+    // where it is now), so the moving, turning train is handled right.
+    for (const car of train.cars) {
+      const r1 = p1.clone().applyMatrix4(car.inv);
+      if (Math.abs(r1.x) > 12 || r1.z < car.z0 - 12 || r1.z > car.z1 + 12) continue;
+      const r0 = p0.clone().applyMatrix4(car.prevInv);
+      for (const c of car.colliders) {
+        const h = segmentBox(r0, r1, c.min, c.max);
+        if (h) consider({ t: h.t, type: 'train', car, r0, r1 });
+      }
+      if (a.owner === 'enemy' && !player.dead && car === player.car) {
+        for (const b of player.hitBoxes()) {
+          const h = segmentBox(r0, r1, b.min, b.max);
+          if (h) consider({ t: h.t, type: 'player', head: b.head });
+        }
       }
     }
 
@@ -219,14 +220,14 @@ export class ArrowSystem {
     const dir = a.vel.clone().normalize();
 
     if (hit.type === 'train') {
-      // Stick into the train, in train space, so it rides along with us.
+      // Stick into that car, in its frame, so it rides along with us.
       const rel = hit.r1.clone().sub(hit.r0).normalize();
       const local = hit.r0.clone().lerp(hit.r1, hit.t).addScaledVector(rel, EMBED);
       a.mesh.position.copy(local);
       a.mesh.quaternion.setFromUnitVectors(Z, rel);
       scene.remove(a.mesh);
-      train.group.add(a.mesh);
-      this.stuck.push({ mesh: a.mesh, where: 'train', age: 0 });
+      hit.car.inner.add(a.mesh);
+      this.stuck.push({ mesh: a.mesh, where: 'train', car: hit.car, age: 0 });
       const inTrain = this.stuck.filter((s) => s.where === 'train');
       if (inTrain.length > MAX_STUCK_IN_TRAIN) this.removeStuck(inTrain[0]);
       sound.thunk(point, player);
@@ -272,11 +273,11 @@ export class ArrowSystem {
     const p = this.grabPoint(s, _g);
     if (p.distanceTo(eye) > CONFIG.player.grabReach) return false;
     // Nothing solid between your eyes and the arrow (stop just short of it,
-    // so the plank it's stuck in doesn't count).
-    const t = this.game.train.position;
-    const a = eye.clone().sub(t);
-    const b = p.clone().sub(t).lerp(a, 0.06);
-    for (const c of this.game.train.colliders) if (segmentBox(a, b, c.min, c.max) !== null) return false;
+    // so the plank it's stuck in doesn't count). Worked out in its car's frame.
+    const inv = s.car.inv;
+    const a = eye.clone().applyMatrix4(inv);
+    const b = p.clone().applyMatrix4(inv).lerp(a, 0.06);
+    for (const c of s.car.colliders) if (segmentBox(a, b, c.min, c.max) !== null) return false;
     return true;
   }
 

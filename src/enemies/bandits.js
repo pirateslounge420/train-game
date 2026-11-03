@@ -5,6 +5,7 @@ import { clamp, rand, segmentBox, solveBallistic } from '../core/math.js';
 import { groundHeight } from '../world/terrain.js';
 
 const E = CONFIG.enemies;
+const _F = new THREE.Vector3(), _R = new THREE.Vector3(), _W = new THREE.Vector3(), _d = new THREE.Vector3();
 const D = CONFIG.damage;
 
 // Hit zones (§U): every painted box of the horse and rider is its own hit
@@ -143,9 +144,11 @@ class Bandit {
     this.riderHits = hitParts(this.rider);
     this.moved = new THREE.Vector3(); // how far we moved this frame
 
+    // Start behind the train, out to the side, riding the line's way.
     const t = mgr.game.train;
-    this.pos = new THREE.Vector3(side * (Math.abs(this.slotX) + 6), 0, t.position.z + rand(55, 85));
+    this.pos = t.position.clone().addScaledVector(t.right(_R), side * (Math.abs(this.slotX) + 6)).addScaledVector(t.forward(_F), -rand(55, 85));
     this.vel = t.velocity.clone();
+    this.fleeing = false;
     this.yaw = 0;
     this.phase = Math.random() * 6;
 
@@ -167,8 +170,10 @@ class Bandit {
     const g = CONFIG.gravity;
 
     if (this.horseAlive) {
-      let wantVx, wantVz;
-      if (this.mounted) {
+      // Steer in the train's own directions, so riders follow the curves.
+      const F = train.forward(_F), R = train.right(_R);
+      const want = _W;
+      if (this.mounted && !this.fleeing) {
         // Ride toward our slot beside the train.
         this.slotTimer -= dt;
         if (this.slotTimer <= 0) {
@@ -176,17 +181,18 @@ class Bandit {
           this.slotZ = rand(-24, 22);
           this.slotX = this.side * rand(7.5, 14);
         }
-        const tz = train.position.z + this.slotZ;
-        wantVz = train.velocity.z + clamp((tz - this.pos.z) * 0.6, -E.maxExtraSpeed, E.maxExtraSpeed);
-        wantVx = clamp((this.slotX - this.pos.x) * 0.8, -4, 4);
+        _d.copy(train.position).addScaledVector(R, this.slotX).addScaledVector(F, -this.slotZ).sub(this.pos);
+        want.copy(train.velocity).addScaledVector(F, clamp(_d.dot(F) * 0.6, -E.maxExtraSpeed, E.maxExtraSpeed)).addScaledVector(R, clamp(_d.dot(R) * 0.8, -4, 4));
+      } else if (this.mounted) {
+        // Peeling off: wide and back, before a tunnel or a town (§G).
+        want.copy(F).multiplyScalar(Math.max(8, train.cruise - 2) * 0.9).addScaledVector(R, this.side * 9);
       } else {
         // Riderless: veer away from the tracks and slow down.
-        wantVz = this.vel.z * 0.98;
-        wantVx = this.side * 5;
+        want.copy(this.vel).multiplyScalar(0.98).addScaledVector(R, this.side * 5);
       }
       const a = 5 * dt;
-      this.vel.z += clamp(wantVz - this.vel.z, -a, a);
-      this.vel.x += clamp(wantVx - this.vel.x, -a, a);
+      this.vel.x += clamp(want.x - this.vel.x, -a, a);
+      this.vel.z += clamp(want.z - this.vel.z, -a, a);
     } else {
       // Dead horse: tumble over and skid to a stop.
       this.horseRoll = Math.min(Math.PI / 2, this.horseRoll + dt * 3.2);
@@ -238,7 +244,7 @@ class Bandit {
     rp.upper.rotation.y += (yaw - rp.upper.rotation.y) * Math.min(1, dt * 6);
     const dist = target.distanceTo(this.pos);
 
-    const inRange = dist < E.shootRange && !player.dead;
+    const inRange = dist < E.shootRange && !player.dead && !this.fleeing;
     if (inRange) this.shootTimer -= dt;
     // Raise the bow just before shooting so you can see it coming.
     const aiming = inRange && this.shootTimer < 0.9;
@@ -256,7 +262,7 @@ class Bandit {
   shoot(player, train, g, target) {
     const origin = this.riderParts.bowArm.localToWorld(new THREE.Vector3(0, 0, -0.75));
     const d = target.clone().sub(origin);
-    const w = this.vel.clone().sub(train.velocity); // our motion relative to the player
+    const w = this.vel.clone().sub(player.worldVelocity()); // our motion relative to the player
     const u = solveBallistic(d, w, E.arrowSpeed, g);
     if (!u) return;
     // Natural inaccuracy: nudge the shot by a random small angle.
@@ -371,8 +377,10 @@ export class BanditManager {
   update(dt) {
     const train = this.game.train;
     const active = this.bandits.filter((b) => b.active);
-    const wanted = Math.min(E.maxCount, E.startCount + Math.floor(this.downed / 4));
-    if (active.length < wanted) {
+    // Night is more dangerous: two more riders (§R).
+    const night = this.game.night() > 0.5 ? 2 : 0;
+    const wanted = Math.min(E.maxCount, E.startCount + Math.floor(this.downed / 4)) + night;
+    if (active.length < wanted && this.game.ridersMaySpawn()) {
       this.spawnTimer -= dt;
       if (this.spawnTimer <= 0) {
         this.spawn(active);
@@ -380,10 +388,15 @@ export class BanditManager {
       }
     }
 
+    const F = train.forward(_F), R = train.right(_R);
+    const peel = !this.game.ridersMayStay();
     for (let i = this.bandits.length - 1; i >= 0; i--) {
       const b = this.bandits[i];
+      if (peel && b.active && !b.fleeing) b.fleeing = true;
       b.update(dt);
-      if (!b.active && (b.pos.z > train.position.z + 220 || Math.abs(b.pos.x) > 120)) {
+      _d.subVectors(b.pos, train.position);
+      const behind = -_d.dot(F), far = Math.abs(_d.dot(R));
+      if (behind > 220 || far > 120 || ((!b.active || b.fleeing) && (behind > 130 || far > 80))) {
         b.dispose();
         this.bandits.splice(i, 1);
       }
@@ -415,7 +428,8 @@ export class BanditManager {
           m.position.y = groundHeight(m.position.x, m.position.z) + 0.2;
         }
       }
-      if (m.position.z > train.position.z + 220) {
+      _d.subVectors(m.position, train.position);
+      if (-_d.dot(F) > 220 || _d.length() > 300) {
         this.scene.remove(m);
         this.bodies.splice(i, 1);
       }

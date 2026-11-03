@@ -103,4 +103,9 @@ export class Sound {
     this.noise(0.04, 2500, 3, 0.07);
     this.tone(240, 0.04, 0.05, 'square');
   }
+  // The engine's whistle: two notes together, pulling out of a town.
+  whistle() {
+    this.tone(587, 1.1, 0.06, 'triangle', 560);
+    this.tone(740, 1.1, 0.05, 'triangle', 700);
+  }
 }

@@ -3,8 +3,8 @@
 > **Design and sync:** `docs/DESIGN.md` holds every locked decision, `docs/PROGRESS.md` the log, and `reference/` Claude chat's playable reference build (the spec for feel). `CLAUDE.md` says how the two Claudes share this repo.
 
 A low-poly, first-person Wild West rail shooter that runs in the browser.
-You ride a steam train through an endless desert and fight off bandits on
-horseback with a bow and arrow.
+You ride a steam train along an endless, curving line through changing
+country and fight off bandits on horseback with a bow and arrow.
 
 This is the **first tiny prototype**. It only covers the core feel: riding
 the train, moving around on it, and bow combat.
@@ -72,15 +72,36 @@ drawing.
 
 ## What's in this prototype
 
-- **Endless train ride.** The train runs at a steady ~34 mph along a
-  straight track. Desert ground, cacti, rocks, mesas and telegraph poles are
-  built ahead of you and cleared away behind, so the land never runs out.
+- **The line and the country** (design §G, §R, ported from reference
+  build 0.7). The track curves (bends of 170–460 m radius) and runs
+  straight through towns and tunnels. It passes through six kinds of
+  country: Prairie, Red Desert, High Pass, Pine Country, Salt Flats and
+  Badlands. Each has its own ground colours, hills and scenery (trees,
+  pines, cacti, rocks, bushes, mesas) and its own fog. Which country comes
+  next follows a slow drift of temperature and moisture, never the same
+  twice in a row. Each stretch is longer and faster than the last: 15 m/s
+  (34 mph) to start, 5 m/s more each stretch, up to 62 m/s.
+- **Towns.** Every stretch starts at a town (station, water tower,
+  houses). The train brakes in, stops for 6 seconds and pulls out with a
+  whistle. Stopping there heals you fully and gives you 12 arrows (up to
+  40). Its name shows on screen.
+- **Tunnels.** High Pass and Badlands each have one: a cliff portal, a dark
+  stone bore with lanterns, and a mountain over the top. Riders peel off
+  before a tunnel or a town, and none come while you're in one.
+- **The day.** A day lasts 144 minutes, and a run starts at about 07:00.
+  The sun crosses the sky. Dusk goes violet, and night is deep blue, with
+  stars, a moon and the engine's headlamp lit. Night brings two extra
+  riders.
+- **The seed.** Every run's line, country and towns come from one number,
+  shown on the stats line. Add `?seed=1234` to the address to ride the
+  same line again.
 - **The train.** A steam locomotive with a cowcatcher, big box headlamp, brass
   bands and domes, a balloon smokestack with smoke, a riveted cab, six
   cylinders (three stacked on each side) and a steam-turbine casing along the
   boiler. Connecting rods visibly drive the big red driving wheels. Behind it
   are a coal tender, a boxcar and a flatcar.
-- **Riding on it.** You start on the flatcar at the back. You can walk the
+- **Riding on it.** You start on the flatcar at the back. Each car follows the
+  track on its own, so the train bends through curves. You can walk the
   whole train, climb the ladders onto the boxcar roof, drop onto the coal
   tender, get into the cab, and walk the running boards beside the boiler up
   to the front. You move with the train. If you fall off, you die.
@@ -126,7 +147,8 @@ src/
   main.js             starts everything and runs the game loop
   config.js           all the tunable numbers
   core/               input (keys, mouse, touch), maths helpers, materials
-  world/              sky, endless terrain, smoke
+  world/line.js       the seed, the curving line, regions, biomes, towns, tunnels
+  world/              also: the sky and the day, the country along the line, smoke
   train/train.js      the train model, its moving parts and walkable surfaces
   player/player.js    walking, jumping, ladders, health
   combat/bow.js       drawing and shooting, and the bow you see in your hands
@@ -138,10 +160,9 @@ src/
 
 For testing, open the game with `?debug` on the end of the address
 (`http://localhost:8123/?debug`). That gives the browser console access to
-the game (`game`, `startGame()`, `step(frames)`).
+the game (`game`, `startGame()`, `step(frames)`, `setTime(hour)`).
 
 ## Not in this prototype (planned for later)
 
-Towns and regions, folklore monsters and bosses, the day-night cycle and
-dangerous nights, AI companions, coal shoveling, steam boost and train speed
-changes, curves in the track.
+Getting off in towns, folklore monsters and bosses, AI companions, the
+steam surge (next on the list, §K).

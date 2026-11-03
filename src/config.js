@@ -5,9 +5,8 @@
 export const CONFIG = {
   gravity: 9.81,
 
-  train: {
-    speed: 15, // m/s (~34 mph) – a horse at full gallop can just outrun it
-  },
+  // The train's speed comes from the region it's in (15 m/s, +5 a region,
+  // up to 62), set in src/world/line.js with the rest of the line (§G).
 
   view: {
     fov: 72, // landscape screens (as in the reference build)

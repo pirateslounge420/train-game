@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { Input, TOUCH } from './core/input.js';
-import { createSky, SKY } from './world/sky.js';
+import { Sky, DAY_LEN, START_TIME } from './world/sky.js';
+import { SEED, TOWNS, biomeOf, biomeParams, regionStart, tunnelNear } from './world/line.js';
 import { Terrain } from './world/terrain.js';
 import { Smoke } from './world/smoke.js';
 import { Train } from './train/train.js';
@@ -23,16 +24,8 @@ document.body.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(CONFIG.view.fov, innerWidth / innerHeight, 0.05, 3000);
-const sky = createSky(scene);
-
-scene.add(new THREE.HemisphereLight(0xcfe0ff, 0xb07a4a, 1.1));
-const sun = new THREE.DirectionalLight(0xffe0b0, 2.6);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 260 });
-sun.shadow.bias = -0.0004;
-sun.shadow.normalBias = 0.03;
-scene.add(sun, sun.target);
+camera.rotation.order = 'YXZ';
+const sky = new Sky(scene);
 
 // ---- game objects -----------------------------------------------------------
 const input = new Input(renderer.domElement);
@@ -40,13 +33,50 @@ const sound = new Sound();
 const hud = new Hud();
 const train = new Train(scene);
 const terrain = new Terrain(scene);
-terrain.update(train.position.z, 99); // build the starting area all at once
+for (let i = 0; i < 14; i++) terrain.update(train.distance); // build the starting area all at once
 const smoke = new Smoke(scene);
 const player = new Player(train);
 
 document.body.classList.toggle('touch', TOUCH);
 
-const game = { scene, camera, train, player, sound, hud, terrain };
+// The day: a run starts at about 07:00 (§R).
+let dayT = START_TIME;
+
+// The engine's headlamp, lit at night (§R).
+const headlamp = new THREE.SpotLight(0xffe2a0, 0, 140, 0.32, 0.5, 1);
+headlamp.position.set(0, 4.47, -22.4);
+headlamp.target.position.set(0, 1.5, -90);
+train.loco.inner.add(headlamp, headlamp.target);
+
+const game = {
+  scene, camera, train, player, sound, hud, terrain,
+  night: () => sky.cur.night,
+  // Riders keep away from towns and tunnels (§G): none spawn when the train
+  // isn't running, near a town or before a tunnel...
+  ridersMaySpawn() {
+    const s = train.distance;
+    if (train.state !== 'run') return false;
+    if (regionStart[train.nextTown] - s < 260 || s - regionStart[train.region] < 110) return false;
+    return !tunnelNear(s + 300, 0) && !tunnelNear(s, 60);
+  },
+  // ...and those already out peel off before a tunnel or a stop.
+  ridersMayStay() {
+    const s = train.distance;
+    return train.state === 'run' && !tunnelNear(s + 140, 0) && !tunnelNear(s, 30);
+  },
+};
+
+// Towns: rest, +12 arrows, then on to the next country (§G).
+train.onArrive = (i) => {
+  player.health = CONFIG.player.maxHealth;
+  player.arrows = Math.min(CONFIG.player.maxArrows, player.arrows + 12);
+  hud.banner(TOWNS[i % TOWNS.length], `Rested · +12 arrows · next: ${biomeOf(i).name}`);
+};
+train.onDepart = () => sound.whistle();
+// Tap the time on the stats line: jump three hours (for testing, §R).
+hud.onTimeTap = () => (dayT += DAY_LEN / 8);
+let tunnelBannered = -1;
+const HEADLAMP = 300; // candela-ish; three.js lights fall off with distance
 game.arrows = new ArrowSystem(game);
 game.bandits = new BanditManager(game);
 player.bow = new Bow(game, player); // each player carries their own bow (§W)
@@ -59,6 +89,7 @@ const overlayButton = document.getElementById('overlay-button');
 let state = 'menu'; // menu | playing | paused | dead
 
 function play() {
+  if (state === 'menu') hud.banner(TOWNS[0], 'Departing');
   state = 'playing';
   input.active = true;
   overlay.classList.add('hidden');
@@ -96,6 +127,7 @@ if (location.search.includes('debug')) {
     render(dt);
   };
   window.startGame = play;
+  window.setTime = (h) => (dayT = (h / 24) * DAY_LEN);
 }
 
 function showDeath() {
@@ -142,8 +174,15 @@ function update(dt) {
   time += dt;
   const [mx, my] = input.takeMouseDelta();
   player.look(mx, my);
+  dayT += dt;
   train.update(dt);
-  terrain.update(train.position.z);
+  terrain.update(train.distance);
+  const tun = tunnelNear(train.distance + 60, 0);
+  if (tun && tunnelBannered !== tun.s0) {
+    tunnelBannered = tun.s0;
+    hud.banner('Tunnel ahead', 'Mind your head');
+    sound.whistle();
+  }
   // Player physics in two half-steps for steadier collisions.
   player.controls(input);
   player.update(dt / 2);
@@ -158,16 +197,15 @@ function update(dt) {
   smoke.update(dt, train);
   player.updateHealth(dt);
   trainSounds(dt);
-  hud.update(game, dt);
+  hud.update(game, dt, { dayT, dayLen: DAY_LEN, seed: SEED });
   if (player.dead) showDeath();
 }
 
 function render(dt) {
-  // Sun and shadows follow the player.
-  const eye = player.eyeWorld();
-  sun.target.position.copy(eye);
-  sun.position.copy(eye).addScaledVector(SKY.sunDir, 120);
-  sky.position.copy(camera.position);
+  // The sky, the light and the fog for this time of day and this country.
+  sky.update(dt, dayT, camera.position);
+  sky.updateFog(biomeParams(train.distance), !!tunnelNear(train.distance, 0));
+  headlamp.intensity = HEADLAMP * sky.cur.night;
 
   // Ease the zoom toward what the bow wants (narrower as it draws).
   const fov = player.bow.fov(camera);

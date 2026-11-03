@@ -3,14 +3,20 @@ import { CONFIG } from '../config.js';
 import { clamp } from '../core/math.js';
 
 const C = CONFIG.player;
+const _m = new THREE.Matrix4();
+const _c = new THREE.Vector3();
 
-// The player lives in "train space" (see train.js). Their position is
-// relative to the train, so walking around is ordinary physics and the
-// train's motion simply carries them along.
+// The player lives in "train space" (see train.js), in the frame of the car
+// they stand on. Their position is relative to that car, so walking around
+// is ordinary physics and the train's motion simply carries them along.
+// Crossing the gap to the next car changes frames at its midpoint (§M).
 export class Player {
   constructor(train) {
     this.train = train;
     this.local = new THREE.Vector3(0, 1.46, 17.5); // feet, on the flatcar
+    this.car = train.carAt(this.local.z);
+    this.colliders = []; // this car's boxes plus the neighbours', in this car's frame
+    this.ladders = [];
     this.vel = new THREE.Vector3(); // relative to the train
     this.yaw = 0; // 0 = looking toward the front of the train
     this.pitch = 0;
@@ -27,7 +33,7 @@ export class Player {
 
   // World-space position of the feet / eyes / chest.
   feetWorld(out = new THREE.Vector3()) {
-    return out.copy(this.local).add(this.train.position);
+    return this.train.toWorld(this.car, this.local, out);
   }
   eyeWorld(out = new THREE.Vector3()) {
     return this.feetWorld(out).setY(out.y + C.eyeHeight);
@@ -37,7 +43,7 @@ export class Player {
   }
   // Velocity over the ground = train velocity + our walking velocity.
   worldVelocity(out = new THREE.Vector3()) {
-    return out.copy(this.vel).add(this.train.velocity);
+    return this.train.dirToWorld(this.car, this.vel, out).add(this.car.vel);
   }
 
   // Hit boxes in train space (for enemy arrows).
@@ -60,6 +66,47 @@ export class Player {
   controls(input) {
     const m = input.move();
     this.ctl = { x: m.x, y: m.y, sprint: input.sprint, jump: input.take('jumpReq') };
+    this.gatherColliders();
+  }
+
+  // This car's boxes as they are, and the cars either side of it brought
+  // into this car's frame (on a curve they're turned a few degrees).
+  gatherColliders() {
+    const t = this.train, car = this.car;
+    this.colliders = car.colliders.slice();
+    this.ladders = car.ladders.slice();
+    for (const n of [t.cars[car.i - 1], t.cars[car.i + 1]]) {
+      if (!n) continue;
+      _m.multiplyMatrices(car.inv, n.inner.matrixWorld);
+      const bring = (b) => {
+        const min = new THREE.Vector3(Infinity, Infinity, Infinity), max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+        for (let k = 0; k < 4; k++) {
+          _c.set(k & 1 ? b.max.x : b.min.x, 0, k & 2 ? b.max.z : b.min.z).applyMatrix4(_m);
+          min.min(_c);
+          max.max(_c);
+        }
+        min.y = b.min.y;
+        max.y = b.max.y;
+        return { min, max, faceSign: b.faceSign };
+      };
+      for (const b of n.colliders) this.colliders.push(bring(b));
+      for (const b of n.ladders) this.ladders.push(bring(b));
+    }
+  }
+
+  // Walked past the middle of the gap? Carry on in the next car's frame,
+  // keeping where we are in the world and the way we face.
+  changeCar() {
+    const t = this.train, car = this.car;
+    const next = t.carAt(this.local.z);
+    if (next === car) return;
+    t.toWorld(car, this.local, _c);
+    t.toLocal(next, _c, this.local);
+    t.dirToWorld(car, this.vel, _c);
+    t.dirToLocal(next, _c, this.vel);
+    this.yaw += next.th - car.th;
+    this.car = next;
+    this.gatherColliders();
   }
 
   update(dt) {
@@ -112,6 +159,8 @@ export class Player {
     const moving = Math.hypot(fwd, strafe) > 0.05;
     this.bob = moving && this.onGround && !this.onLadder ? this.bob + dt * 11 : 0;
 
+    this.changeCar();
+
     // Fell off the train?
     if (this.local.y < 0.7) this.die('You fell off the train.');
   }
@@ -122,7 +171,7 @@ export class Player {
   }
 
   freeAt(x, y, z) {
-    for (const c of this.train.colliders) if (this.overlaps(c, x, y, z)) return false;
+    for (const c of this.colliders) if (this.overlaps(c, x, y, z)) return false;
     return true;
   }
 
@@ -131,7 +180,7 @@ export class Player {
     if (delta === 0) return;
     const p = this.local;
     p[axis] += delta;
-    for (const c of this.train.colliders) {
+    for (const c of this.colliders) {
       if (!this.overlaps(c, p.x, p.y, p.z)) continue;
       if (axis === 'y') {
         if (delta < 0) {
@@ -156,7 +205,7 @@ export class Player {
   }
 
   ladderAt() {
-    for (const l of this.train.ladders) if (this.overlaps(l, this.local.x, this.local.y, this.local.z)) return l;
+    for (const l of this.ladders) if (this.overlaps(l, this.local.x, this.local.y, this.local.z)) return l;
     return null;
   }
 
@@ -193,6 +242,7 @@ export class Player {
       camera.position.x += (Math.random() - 0.5) * this.shake * 0.08;
       camera.position.y += (Math.random() - 0.5) * this.shake * 0.08;
     }
-    camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+    // Our yaw is relative to our car; the car turns with the line.
+    camera.rotation.set(this.pitch, this.yaw - this.car.th, 0, 'YXZ');
   }
 }
