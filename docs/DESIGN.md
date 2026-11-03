@@ -176,11 +176,73 @@ A second chat built these into the same artifact on 3 Nov and they are kept in t
 - The visible six cylinders and the turbine are not on the current engine: reference 0.7, ported to `src/` under §N, has neither.
 - This is not yet in the §Z queue.
 
+## §X. The cyborg player: cam bow, magnet hands, fists, Derringer, losing parts (3 Nov, late afternoon voice session; Mike, locked; amends §B, §C, §D, §K, §S, §U) — not built
+**Design rule for everything.** Nothing goes on the game just because it looks cool. Every part of every design has a job, and if it has no job it comes off (Mike).
+
+**Arrows that pass through riders (top priority).** Mike still sees arrows go through riders that should have hit. Likely cause: tunnelling (an arrow moves 1–2 m a frame and skips past a thin box between frames). Rule: an arrow hits anything its path crossed during the frame, whatever the frame rate. Faster arrows below make this worse, so it is fixed first.
+
+**The cam bow.** Both bows are compound bows: an off-centre wheel (cam) at each limb tip with cables crossing behind the string. Cams only: no spring, no wind-up drum, no gears for show. What the cams do, and why they're there:
+- The draw is heavy early, then "lets off" near the end, so holding at full draw is easy and steady (a sniper's hold). A hard stop at full draw ("the wall") makes every full draw the same length.
+- They store more energy than a plain bow at the same pull, so the arrow leaves much faster.
+- **Speeds.** Short cam bow (the one you start with): about 250 mph (112 m/s) at full draw. Longbow (a long cam bow, a shop upgrade later): 400+ mph (179 m/s). Claude's proposal for the snap shot: keep today's snap-to-full ratio (45 : 80), so the short bow snaps at about 63 m/s. Mike to confirm.
+- Why it matters on a moving train: an arrow keeps the train's speed (§B). At 100 mph the old 135 mph bow sent a shot out the back at only ~35 mph over the ground, floating and dropping. At 250 mph it still leaves at 150; forward shots fly almost flat.
+- Open: the zero distances (15–35 m, §L) were set for the old speeds; re-tune once the new speeds are in. The draw stays about a second (§L); whether the cam "hump then let-off" shows in the draw curve or the animation is open.
+
+**The body.** The player is a cyborg.
+- **Hands float.** Your hands are mechanical and held by magnet/electric tech, not attached to your arms; that's why they hover. Three fingers and a thumb (the classic archer's three-finger draw; fewer joints to break; reads as a machine). You see them in first person. Idle: fingers flex, a slight hover bob.
+- **Legs and feet are attached** (mechanical, not floating): legs carry your weight every step, so magnets there would make no sense.
+- **Parts can be blown off:** a hand, a foot, the head, the torso.
+  - Lose a hand: you can't use two-handed items (the bow); the Derringer still works.
+  - Lose a foot: you limp. Two-handed items only while standing still; one-handed items while limping.
+  - Lose the head or torso: dead.
+  - A lost hand or foot is fixed by a mechanic in the next town.
+- **Crits come from where the hit lands, not dice.** It is much easier for you to crit an enemy than for an enemy to crit you: enemy aim lands on the body and limbs far more often than the head.
+- Open: how many hits each part takes before it goes, and how parts relate to the health bar (§C).
+
+**The magnet hand replaces the grappling hook (§S's hook is dropped).**
+- Right click (or Grab) fires your hand out on a crackling electric tether and it comes back. **Tap** = a quick short grab. **Hold** = charge it to fly further.
+- It picks things up (arrows stuck in the side of the train, out of reach from the windows today), snatches a rider's hat, catches a bomb (§Y).
+- Feel: a big elastic spring. At full stretch it hangs for a moment, then snaps back. That hang is a timing window: throw early and let things drift into the open hand.
+- Knocked off the train: fire the hand at the train, it clamps on and you're dragged behind; reel yourself back in. Drag physics to be worked out. Miss, and you're left behind on foot; the train waits at the next town.
+
+**Fists.** An item on the mouse wheel. Left click punches. Tap = a close jab; hold = the fist launches further (rocket punch on the same spring as above). Punches do less damage than an arrow. Punching is how you knock a bomb back (§Y), and the bomb goes where you aim.
+
+**The Derringer.** A one-handed sidearm with one or two shots. Pretty overpowered: a huge bullet that goes through a rider and hits whoever's behind him. It is your lifeline when you've lost a hand or a foot. Open: reload and ammo.
+
+**Controls (desktop).** Mouse wheel cycles bow, fists, Derringer (the shovel is gone). Left click: hold to charge the item in hand, release to fire. Right click: tap to grab, hold to charge the hand. Each button cancels the other's charge: tap right click to cancel a draw; click left to cancel a hand charge. WASD, Space jumps, Shift crouches. Phone layout to match.
+
+**Ammo.** Not infinite. Towns refill you to 15 arrows; picking arrows back up off enemies and the train is made much easier (the hand).
+
+**Co-op (§W).** If you lose your head, a friend can carry it; at the next town your brain goes into a new body. Until then you watch your friend in third person.
+
+## §Y. The train under fire: surges, brakes, the rival train, bombs, gangs that pile up (3 Nov, late afternoon; Mike, locked; amends §D, §E, §K) — not built
+**Surges.** Two a stretch, not three (§K): fire both together for a double boost, or save one. Towns restock them.
+
+**Speed you can feel.** On a curve at high speed, above all mid-surge, the train banks into the curve with sparks flying off the wheels. Coming into a town too fast, the conductor slams on the brakes and the train screeches to a halt (sound, sparks, the view pitching forward).
+
+**Car health.** Each car has its own health bar. Only bombs damage the train; arrows don't. Every town repairs damaged cars, but a destroyed car is gone for the rest of the run (lose the hat car and its trophies go with it; lose the caboose and its platform). Destroyed engine = run over. Later: cars that derail.
+
+**The rival train.** From the second or third town, an enemy train runs on a second line roughly parallel to yours and tries to hold your speed. Its cars take bomb damage the same way; you can knock bombs into it.
+
+**Bombs (later in a run).** Enemies lob bombs at the train.
+- Catch it with the hand (right click) and throw it back: the safe, slower return. Or punch it (fists): faster, aimed where you look.
+- Enemies can return it too. Each return makes it faster and charges it (Mario Strikers Charged): it glows brighter and crackles more, so you can read the danger at a glance.
+- No fuse. It goes off when someone misses it, harder the longer the rally.
+
+**Boarding and the horse ferry.** A rider jumps aboard your train; his horse rides off to a camp and comes back with another rider. Killing the horse stops the ferry. Open: whether the camps are visible from the line (so you can pick off the waiting men early).
+
+**The gangs pile up.** Like Black Ops Zombies: riders you don't kill in a stretch follow you into the next, so the stretches get harder until you can't hold out.
+
+**Open.** Mike's notes say the stretches were made 100 % longer, but §K says 25 %: which is current?
+
 ## §Z. The queue (order of work for Claude Code)
+0. **Next, before the rest of item 1 (3 Nov, late afternoon):** fix arrows passing through riders (§X), then the cam bow's speeds (§X), two surges a stretch (§Y), and towns refilling to 15 arrows (§X). Small, and it's the core feel.
 1. Port the reference build's feel into `src/`, feature by feature, keeping the repo's module layout: §B/§L/§U archery and hitboxes, §C/§M walking and phone controls, §G/§R the seeded line, climate biomes and the day, §D/§K/§N the four cars, the engine and the surge, §E/§O/§U riders, dismounted riders and gore (as data), §H/§T hats, §I HUD, §J/§Q look, §S the conductor, crouch, knock-off and hook. Stop and explain after each.
 2. Deploy to GitHub Pages on every push to `main`, so Mike plays from a link on his phone.
 3. The first town stop: get off, walk one street, a store that restocks arrows.
 4. Trophies persist: the hat rack keeps its hats across runs.
 5. Co-op (§W).
+6. The cyborg player (§X): floating hands in view, the magnet-hand grab and launch, fists, the Derringer, the cam bow model, losing parts. Replaces §S's hook.
+7. The train under fire (§Y): car health, banking and sparks on curves, the conductor's hard brake, boarding and the horse ferry, gangs that pile up, the rival train, bombs and the rally.
 
 (3 Nov, Mike: "No shovel, cut §Z.3." The cab-and-firebox coal run is gone with the shovel, per §K; the old items 4–6 moved up.)

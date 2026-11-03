@@ -1,5 +1,11 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (late afternoon) — Claude (chat): design §X and §Y from Mike's voice session
+- §X, the cyborg player: the "every part has a job" rule; arrows passing through riders (fix first); the cam bow (short ~250 mph, longbow 400+ mph); floating three-fingered magnet hands, attached legs; losing a hand, foot, head or torso; crits by where hits land, rarer against you; the magnet hand replaces §S's grappling hook (tap grab, hold to launch, elastic hang and snap-back, catching the train when knocked off); fists and rocket punch; the one-handed Derringer that over-penetrates; controls; 15 arrows a town; carrying a friend's head in co-op.
+- §Y, the train under fire: two surges a stretch; banking and sparks at speed; the conductor's hard brake into towns; car health (bombs only, towns repair, destroyed cars stay gone, engine = run over); the rival train on a parallel line; bombs and the charged rally; boarding and the horse ferry; gangs that pile up.
+- §Z: new item 0 (hit fix, bow speeds, two surges, 15 arrows) ahead of the rest of the port; §X and §Y queued as items 6 and 7.
+- No reference build change this time.
+
 ## 2026-11-03 (late afternoon) — Claude (chat): the Violet Chevron rider asset, 0.7a
 - `reference/assets/rider-violet-chevron.js`: Mike's concept frame (`rider-violet-chevron-concept.jpg`, pixel art: black machine horse with violet lightning veins and a glowing eye; goggled, bandana'd rider in a purple-and-black chevron poncho with fringe, black hat with violet band, quiver, violet recurve) built as a code-built rig per §P. Same 27-part tree, pivots, masses, priorities and hit boxes as the game's HORSE_RIG/RIDER_RIG (verified by script), so hits, detachment and the gore table port unchanged; only the pieces hung on each part differ (plates, joint discs, pistons, veins; goggles, fringe, quiver, bow with lightning marks). `viewer-violet-chevron.html` is the turntable (stand/walk/gallop, hit boxes, pop a part with sparks).
 - Not a design decision yet: whether every horse is a machine or this is one gang. Mike to say; §O/§P change if it is every horse.
