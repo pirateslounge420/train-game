@@ -456,7 +456,6 @@ export class Riders {
     const impulse = arrowVel.clone().normalize().multiplyScalar(2.5);
     this.partWorld(part, _v);
     if (react.kind === 'hat') {
-      hud.hitFeedback('headshot', 'HAT SHOT!');
       sound.hitFeedback('headshot');
       this.shootHat(r, impulse);
       return;
@@ -506,18 +505,19 @@ export class Riders {
     return part.g.localToWorld(out.set(...part.def.c));
   }
 
-  // The hat spins off and the man loses his nerve and bolts (§F). Flying it
-  // to the hat car's rack is the hats step (§H).
+  // The hat spins off and the man loses his nerve and bolts (§F). The first
+  // of each gang flies to the rack (§H); any other just tumbles.
   shootHat(r, impulse) {
     if (!r.hatOn) return;
+    const hud = this.game.hud;
     r.hatOn = false;
     r.parts.hat.on = false;
     r.scared = true;
-    if (!r.foot) {
-      r.state = 'flee';
-      r.hold = 0;
-    } else r.state = 'flee';
+    r.state = 'flee';
+    r.hold = 0;
     this.hatShots++;
+    if (this.game.hats.fly(r.hat, r.gang.name)) return hud.hitFeedback('headshot', `NEW HAT: ${r.gang.name.toUpperCase()}`);
+    hud.hitFeedback('headshot', 'HAT SHOT!');
     const v = _v3.copy(impulse).multiplyScalar(1.5);
     v.y += 3.5;
     this.toRagdoll(r.hat, v, 0.05, new THREE.Vector3(rand(-4, 4), rand(10, 16), rand(-4, 4)));

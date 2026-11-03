@@ -243,7 +243,7 @@ export class ArrowSystem {
       scene.remove(a.mesh);
       hit.car.inner.add(a.mesh);
       this.stuck.push({ mesh: a.mesh, where: 'train', car: hit.car, age: 0 });
-      const inTrain = this.stuck.filter((s) => s.where === 'train');
+      const inTrain = this.stuck.filter((s) => s.where === 'train' && !s.hat);
       if (inTrain.length > MAX_STUCK_IN_TRAIN) this.removeStuck(inTrain[0]);
       sound.thunk(point, player);
     } else if (hit.type === 'ground') {
@@ -261,6 +261,7 @@ export class ArrowSystem {
       // Stick into the part it hit, so it flies off with it.
       a.mesh.position.copy(point).addScaledVector(dir, EMBED);
       a.mesh.quaternion.setFromUnitVectors(Z, dir);
+      a.mesh.userData.arrow = true; // a hat keeps the arrow that took it (§T)
       hit.part.g.attach(a.mesh);
       riders.onHit(hit.r, hit.part, a.vel);
     }
@@ -280,6 +281,7 @@ export class ArrowSystem {
   }
 
   reachable(player, s, eye) {
+    if (s.where === 'worn') return s.wearer === player;
     if (s.where !== 'train' || player.onLadder || player.dead) return false;
     const p = this.grabPoint(s, _g);
     if (p.distanceTo(eye) > CONFIG.player.grabReach) return false;
@@ -302,7 +304,7 @@ export class ArrowSystem {
   // Grab button / right click / E: the reachable arrow nearest your crosshair.
   grab(player, camera) {
     const hud = this.game.hud;
-    if (!this.stuck.some((s) => s.where === 'train')) return hud.hint('No arrows stuck anywhere yet');
+    if (!this.stuck.some((s) => s.where !== 'ground')) return hud.hint('No arrows stuck anywhere yet');
     const eye = player.eyeWorld();
     const look = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     let best = null;
@@ -311,6 +313,11 @@ export class ArrowSystem {
     for (const s of this.stuck) {
       if (!this.reachable(player, s, eye)) continue;
       any = true;
+      // The arrow in the hat you're wearing: no need to look at it.
+      if (s.where === 'worn') {
+        best = best || s;
+        continue;
+      }
       const d = this.grabPoint(s, _g).sub(eye).normalize().dot(look);
       if (d > bd) {
         bd = d;

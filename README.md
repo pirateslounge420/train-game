@@ -143,6 +143,12 @@ drawing.
   - **Horse's head or neck:** the horse goes down and throws him.
   - **Horse's leg:** it flies off and the horse cartwheels.
   - **Horse's body:** three hits to the barrel or two to the rump bring it down.
+- **Hats** (§H, §T). The first hat you shoot off each gang boomerangs up and
+  in through the hat car's side window onto the rack, with your arrow still
+  in it. Any more from that gang just tumble away. Inside the hat car, look
+  at a racked hat and Grab to wear it: a brim shows at the top of your view.
+  Grab again to pull the arrow out of the hat you're wearing. Wearing
+  another puts the first back on its peg.
 - **Riders on foot.** A man thrown whole gets up after a second or two, runs
   at the train, fires two or three wild shots, then runs for it. Any hit
   finishes him. He only counts as downed if you finish him.
@@ -172,6 +178,7 @@ src/
   world/line.js       the seed, the curving line, regions, biomes, towns, tunnels
   world/              also: the sky and the day, the country along the line, smoke
   train/train.js      the train model, its moving parts and walkable surfaces
+  train/hats.js       hats flying to the rack, and wearing them
   player/player.js    walking, jumping, ladders, health
   combat/bow.js       drawing and shooting, and the bow you see in your hands
   combat/arrows.js    arrow flight, hits, sticking, and grabbing them back
@@ -187,5 +194,4 @@ the game (`game`, `startGame()`, `step(frames)`, `setTime(hour)`).
 
 ## Not in this prototype (planned for later)
 
-Getting off in towns, hats on the hat car's rack (§H), the conductor and
-crouching (§S), folklore monsters and bosses, AI companions.
+Getting off in towns, the conductor and crouching (§S), folklore monsters and bosses, AI companions.

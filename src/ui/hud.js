@@ -70,7 +70,7 @@ export class Hud {
       if (this.bannerT <= 0) this.banner_.classList.remove('on');
     }
     this.draw.classList.toggle('on', !!p.bow?.drawing);
-    this.grab.classList.toggle('ok', game.arrows.reachableCount(p) > 0);
+    this.grab.classList.toggle('ok', game.arrows.reachableCount(p) > 0 || !!game.hats.looked(p, game.camera));
     let prompt = '';
     if (this.hintT > 0) {
       this.hintT -= dt;

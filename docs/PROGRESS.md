@@ -1,5 +1,12 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (late night) — Claude Code: §Z.1 step 6, hats (§H, §T)
+- New `src/train/hats.js`, ported from reference 0.7: the first hat shot off each gang flies a 1.5 s curve to the hat car's side window, then 0.55 s onto its peg, following the moving train; a second hat from that gang tumbles. A racked hat keeps its arrow, and that arrow is safe from the 70-arrow clear-out. Looking at a racked hat within 2.8 m inside the hat car and pressing Grab (or tapping) wears it; the Grab button lights for it. Grab again pulls the arrow from the worn hat, wherever you're looking. Wearing another hangs the first back on its peg.
+- Per-player (§W): the rack and the gangs collected belong to the train; `player.hat` is each player's own. The worn hat hangs on the camera, so the camera is now in the scene.
+- Dropped from the reference: its floor fallback for a full rack. There are 34 pegs and at most one hat per gang.
+- Checked in the browser (seed 7): real arrows took 2 of 3 hats (the third missed; the hitbox is the crown only); first hat to the rack with its arrow; second of a gang tumbles; a second gang racks on the next peg; wear, swap back to the peg, pull the arrow with the hat staying on; the brim shows at the top of the view. No console errors. Not tested on a phone.
+- Not yet: hats racked and hat shots aren't on screen (the §I stats panel, next), and the rack doesn't survive a new run (§Z.4). Riders' hats are still the reference's tilt, so the goggles question stands.
+
 ## 2026-11-03 (late night) — Claude Code: §Z.1 step 5, riders, riders on foot and gore (§E, §O, §U)
 - New `src/enemies/rigs.json` holds the reference's horse and rider rigs, hit reactions, gangs and colours as data (§O, §P). New `src/enemies/riders.js` replaces `bandits.js`: the four gangs' painted ponchos, the four-beat gallop, flanking at 9–23 m, aim tightening by region, the reference's spawner, painted-box hitboxes with the 0.3 m priority rule, every reaction in the §O table, bouncing gibs, ragdolls, and dismounted riders who get up, run at 7.5 m/s, fire two or three shots at 1.7× worse aim, and flee. Rider arrows now do 34 to the head and 20 to the body, tested against the reference's two hit balls.
 - Added from Mike's rider picture, on all four gangs: goggles, a quiver, a bandolier strap and a fringed hem. Looks only, no hitboxes. This was before §V; the rest of §V's re-skin is not done.

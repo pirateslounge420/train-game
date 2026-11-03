@@ -10,6 +10,7 @@ import { Player } from './player/player.js';
 import { Bow } from './combat/bow.js';
 import { ArrowSystem } from './combat/arrows.js';
 import { Riders } from './enemies/riders.js';
+import { Hats } from './train/hats.js';
 
 // The riders' bodies and hit reactions are data (§O, §P).
 const RIGS = await (await fetch('src/enemies/rigs.json')).json();
@@ -28,6 +29,7 @@ document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(CONFIG.view.fov, innerWidth / innerHeight, 0.05, 3000);
 camera.rotation.order = 'YXZ';
+scene.add(camera); // so a hat you wear, hung on the camera, gets drawn
 const sky = new Sky(scene);
 
 // ---- game objects -----------------------------------------------------------
@@ -84,6 +86,7 @@ let tunnelBannered = -1;
 const HEADLAMP = 300; // candela-ish; three.js lights fall off with distance
 game.arrows = new ArrowSystem(game);
 game.riders = new Riders(game, RIGS);
+game.hats = new Hats(game);
 player.bow = new Bow(game, player); // each player carries their own bow (§W)
 
 // ---- start / pause / death screens -----------------------------------------
@@ -133,6 +136,14 @@ if (location.search.includes('debug')) {
   };
   window.startGame = play;
   window.setTime = (h) => (dayT = (h / 24) * DAY_LEN);
+}
+
+// Grab: the racked hat you're looking at comes first, then a stuck arrow (§T).
+function grab(tap) {
+  const hat = game.hats.looked(player, camera);
+  if (hat) game.hats.wear(player, hat, camera);
+  else if (tap) game.arrows.tapGrab(player, camera, tap.x, tap.y);
+  else game.arrows.grab(player, camera);
 }
 
 // The steam surge (§K): fired from the tender, three a stretch.
@@ -212,9 +223,10 @@ function update(dt) {
   player.bow.update(dt, input);
   game.riders.update(dt, time);
   game.arrows.update(dt);
-  if (input.take('grabReq')) game.arrows.grab(player, camera);
+  game.hats.update(dt);
+  if (input.take('grabReq')) grab();
   if (input.take('surgeReq')) surge();
-  for (const t of input.takeTaps()) game.arrows.tapGrab(player, camera, t.x, t.y);
+  for (const t of input.takeTaps()) grab(t);
   smoke.update(dt, train);
   player.updateHealth(dt);
   trainSounds(dt);
