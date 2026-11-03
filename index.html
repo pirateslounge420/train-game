@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Train Game — Prototype</title>
+    <link rel="stylesheet" href="style.css" />
+    <script type="importmap">
+      { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+    </script>
+  </head>
+  <body>
+    <div id="hud">
+      <div id="stats"></div>
+      <div id="crosshair"></div>
+      <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+      <div id="callout"></div>
+      <div id="feed"></div>
+      <div id="prompt"></div>
+      <div id="health">
+        <div class="label">HEALTH</div>
+        <div id="health-bar"><div id="health-fill"></div></div>
+      </div>
+      <div id="quiver">
+        <div class="label">ARROWS</div>
+        <div id="arrow-count"></div>
+      </div>
+      <div id="vignette"></div>
+    </div>
+
+    <div id="overlay">
+      <div class="card">
+        <h1 id="overlay-title">Train Game</h1>
+        <p id="overlay-text">Bandits are riding up on the train. Keep her running.</p>
+        <table class="controls">
+          <tr><td>Mouse</td><td>Look around</td></tr>
+          <tr><td>W A S D</td><td>Walk (Shift to run)</td></tr>
+          <tr><td>Space</td><td>Jump</td></tr>
+          <tr><td>W at a ladder</td><td>Climb (S to go down)</td></tr>
+          <tr><td>Hold left mouse</td><td>Draw the bow — longer = stronger</td></tr>
+          <tr><td>Release</td><td>Loose the arrow</td></tr>
+          <tr><td>Right mouse</td><td>Cancel the draw</td></tr>
+          <tr><td>Esc</td><td>Pause</td></tr>
+        </table>
+        <p class="tip">Walk over arrows stuck in the train to pick them up. Aim for the head.</p>
+        <div id="overlay-button">Click to start riding</div>
+      </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
