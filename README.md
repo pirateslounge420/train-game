@@ -1,4 +1,29 @@
-# Train Game — first prototype
+# Train Game
+
+## Current version: `prototype/index.html` (Prototype 0.6)
+
+The main, up-to-date build is the single-file prototype in
+[`prototype/index.html`](prototype/index.html). It's the same game as the
+"Train Game Prototype" page in Claude, saved here so the code lives in the repo.
+Run it the same way as below (`python3 -m http.server 8123`) and open
+<http://localhost:8123/prototype/>. Add `?seed=12345` to replay a specific line.
+
+What it has: a curving line through changing country (prairie, red desert,
+high pass with tunnels, pine country, salt flats, badlands) with towns, a
+day/night cycle, a caboose you can walk through, a hat car with a hat rack,
+the tender and an 8 ft-driver loco. The conductor drives and shovels; **you**
+call the steam surges from the tender (three a stretch, they stack, never past
+200 mph). Bow with a one-second draw, a grappling hook, crouch (Shift), sprint
+(double-tap W), stagger and being thrown off the train, walking up the line to
+the next town or water stop where the conductor waits, riders with fully
+breakable anatomy, footmen who get back up, and hats you can wear.
+
+The multi-file version described below (under `src/`) is the earlier
+prototype and is kept for reference.
+
+---
+
+# Earlier prototype (multi-file, `src/`)
 
 A low-poly, first-person Wild West rail shooter that runs in the browser.
 You ride a steam train through an endless desert and fight off bandits on
