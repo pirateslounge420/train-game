@@ -18,6 +18,7 @@ const E = CONFIG.enemies;
 const G = CONFIG.gravity;
 const PI = Math.PI, TAU = PI * 2;
 const PRIORITY_WINDOW = 0.3; // metres
+const REACH = 7; // metres from a man's middle that are worth testing his boxes
 const FOOT_SPEED = 7.5, FOOT_HIP = 0.88;
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3();
@@ -428,10 +429,12 @@ export class Riders {
     for (const list of [this.riders, this.footmen])
       for (const r of list) {
         if (r.state === 'dead') continue;
-        if (Math.abs(r.pos.x - p1.x) > 7 || Math.abs(r.pos.z - p1.z) > 7) continue;
         _pr.copy(p0);
         _pr.x += r.dx || 0;
         _pr.z += r.dz || 0;
+        // Near the whole path, not just where the arrow ended up: a fast arrow
+        // on a slow frame can finish well past the man it went through (§X).
+        if (pathGap2(r.pos, _pr, p1) > REACH * REACH) continue;
         for (const k in r.parts) {
           const part = r.parts[k];
           if (!this.partLive(r, part)) continue;
@@ -446,7 +449,12 @@ export class Riders {
     const segLen = p0.distanceTo(p1);
     let best = null;
     for (const h of hits) if ((h.t - minT) * segLen < PRIORITY_WINDOW && (!best || h.part.def.pri < best.part.def.pri)) best = h;
-    return { t: best.t, type: 'rider', r: best.r, part: best.part };
+    // Where it struck, on the path as that man saw it, so the arrow sticks
+    // in him and not in the air where he was a frame ago.
+    _pr.copy(p0);
+    _pr.x += best.r.dx || 0;
+    _pr.z += best.r.dz || 0;
+    return { t: best.t, type: 'rider', r: best.r, part: best.part, point: _pr.clone().lerp(p1, best.t) };
   }
 
   // An arrow struck `part` of rider (or man on foot) r (reference onRiderHit).
@@ -818,6 +826,14 @@ export class Riders {
 }
 
 // Does the segment a->b cross the box? Returns t (0..1) or -1.
+// Squared distance, seen from above, from point c to the path a->b.
+function pathGap2(c, a, b) {
+  const vx = b.x - a.x, vz = b.z - a.z, L2 = vx * vx + vz * vz;
+  const t = L2 > 0 ? Math.min(1, Math.max(0, ((c.x - a.x) * vx + (c.z - a.z) * vz) / L2)) : 0;
+  const dx = a.x + vx * t - c.x, dz = a.z + vz * t - c.z;
+  return dx * dx + dz * dz;
+}
+
 function segAABB(a, b, x0, y0, z0, x1, y1, z1) {
   let t0 = 0, t1 = 1;
   const A = [a.x, a.y, a.z], B = [b.x, b.y, b.z], lo = [x0, y0, z0], hi = [x1, y1, z1];

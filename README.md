@@ -83,8 +83,8 @@ drawing.
   (34 mph) to start, 5 m/s more each stretch, up to 62 m/s.
 - **Towns.** Every stretch starts at a town (station, water tower,
   houses). The train brakes in, stops for 6 seconds and pulls out with a
-  whistle. Stopping there heals you fully and gives you 12 arrows (up to
-  40). Its name shows on screen.
+  whistle. Stopping there heals you fully and tops you up to 15 arrows
+  (more than that, you keep them). Its name shows on screen.
 - **Tunnels.** High Pass and Badlands each have one: a cliff portal, a dark
   stone bore with lanterns, and a mountain over the top. Riders peel off
   before a tunnel or a town, and none come while you're in one.
@@ -116,11 +116,11 @@ drawing.
   (or the **Surge** button on a phone). Each surge adds 26 m/s (58 mph) on
   top of the last, up to 200 mph, then bleeds back to cruising speed. Once
   you're going 12 m/s faster than cruise, the riders fall back. You get
-  three a stretch, shown as dots on the stats line or the button, and each
+  two a stretch, shown as dots on the stats line or the button, and each
   town restocks them.
 - **Bow and arrow** (design §B, §L, §U, ported from reference build 0.7).
-  A snap shot leaves at 45 m/s (100 mph) and a full draw at 80 m/s
-  (180 mph). Real gravity and a tiny bit of air drag, so you can see the arc.
+  A snap shot leaves at 63 m/s (140 mph) and a full draw at 112 m/s
+  (250 mph), the short cam bow's speeds (§X). Real gravity and a tiny bit of air drag, so you can see the arc.
   Arrows keep the train's speed. The sight is "zeroed": the arrow leaves
   the bow in your hand and lands on the crosshair at 15 m (snap shot) to
   35 m (full draw); further than that it drops below. The view zooms in a

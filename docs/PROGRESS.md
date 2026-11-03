@@ -1,5 +1,14 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (evening) — Claude Code: the rest of §Z item 0 (§X, §Y)
+- Arrows through riders (§X): the frame-by-frame path test was already sound. The hole was a shortcut in front of it: a rider was only tested if the arrow *finished* the frame within 7 m of him, so a fast arrow on a slow frame could cross him and end up past that line. It now tests how close the whole path came (`riders.js`). The same fix went into the cars' shortcut, and the ground is now checked every 3 m along the path, so an arrow can't step over a rise (`arrows.js`). The reference has the same shortcut.
+- A hit arrow now sticks where it struck on the man. Before, it was placed on the path as seen from the ground, which left it behind a fast rider.
+- Short cam bow (§X): full draw 112 m/s (250 mph). Snap shot 63 m/s (140 mph), which is §X's proposal and still needs Mike's yes. Zero distances not re-tuned (open in §X).
+- Two surges a stretch (§Y), and the dots, the hints and the controls card follow. Two fired together stack to +52 m/s, as §Y wants.
+- Towns top you up to 15 arrows (§X). If you hold more you keep them; the banner shows what you gained. You still start with 20 and the quiver holds 40: §X doesn't change those.
+- Checked in the browser (seed 7). Before the fix, a 24 m path through a rider's middle hit 0 of 2,438 visible points; after it, 24-of-24 at 8, 24 and 40 m. About 190 aimed arrows before the fix, at 20–60 fps and 15–60 m/s, gave no clean pass-through, so in ordinary play at the old speeds this hole was rare, and it may not be all that Mike saw. Arrows stuck 0.13–0.48 m from the part's centre on a 60 m/s rider at 30 fps (3 shots). Bow speeds, surges (third refused), refill from 4 to 15 and no change from 22 all measured. Three minutes of play: no errors. Not tested on a phone.
+- Still passes through, by design so far: a hat's brim (only the crown counts), the goggles, quiver and other kit (no hitboxes), and bodies once they've come off the horse.
+
 ## 2026-11-03 (evening) — Claude Code: stretches 100 % longer (§Y, part of §Z item 0)
 - `src/world/line.js`: region length is now cruise × 210 s (was × 131 s), so towns are further apart: the first at 3,150 m instead of 1,965 m, the second 4,200 m after that. Tunnels, biome blends and the rider no-spawn zones all work from the town positions, so they moved with it. The same seed gives a different map from before, because every town moved.
 - Checked in the browser (seed 7): the train stops at 3,150 m after 220 s, with the first tunnel at 4,998–5,318 m, in the middle of the second stretch. No console errors. Not tested on a phone.

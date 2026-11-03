@@ -5,7 +5,7 @@ import { Sky, DAY_LEN, START_TIME } from './world/sky.js';
 import { SEED, TOWNS, biomeOf, biomeParams, regionStart, tunnelNear } from './world/line.js';
 import { Terrain } from './world/terrain.js';
 import { Smoke } from './world/smoke.js';
-import { Train } from './train/train.js';
+import { Train, SURGES } from './train/train.js';
 import { Player } from './player/player.js';
 import { Bow } from './combat/bow.js';
 import { ArrowSystem } from './combat/arrows.js';
@@ -72,12 +72,13 @@ const game = {
   },
 };
 
-// Towns: rest, +12 arrows, then on to the next country (§G).
+// Towns: rest, arrows back up to 15, then on to the next country (§G, §X).
 train.onArrive = (i) => {
   game.riders.rest();
   player.health = CONFIG.player.maxHealth;
-  player.arrows = Math.min(CONFIG.player.maxArrows, player.arrows + 12);
-  hud.banner(TOWNS[i % TOWNS.length], `Rested · +12 arrows · next: ${biomeOf(i).name}`);
+  const refill = Math.max(0, CONFIG.player.townArrows - player.arrows);
+  player.arrows += refill;
+  hud.banner(TOWNS[i % TOWNS.length], `Rested · ${refill ? `+${refill} arrows · ` : ''}next: ${biomeOf(i).name}`);
 };
 train.onDepart = () => sound.whistle();
 // Tap the time on the stats line: jump three hours (for testing, §R).
@@ -146,14 +147,14 @@ function grab(tap) {
   else game.arrows.grab(player, camera);
 }
 
-// The steam surge (§K): fired from the tender, three a stretch.
+// The steam surge (§K): fired from the tender, two a stretch (§Y).
 function surge() {
   if (player.dead) return;
   if (player.car.name !== 'tender') return hud.hint('Surge from the tender: forward along the roofs, two cars up');
   const why = train.surge();
   if (why) return hud.hint(why);
   sound.horn();
-  hud.message(`STEAM SURGE ${3 - train.surges}/3`);
+  hud.message(`STEAM SURGE ${SURGES - train.surges}/${SURGES}`);
   player.shake = Math.max(player.shake, 0.35);
 }
 

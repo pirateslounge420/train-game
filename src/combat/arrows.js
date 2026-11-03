@@ -11,7 +11,8 @@ import { groundHeight } from '../world/terrain.js';
 // short line segment it travelled and check what it hit first.
 
 const Z = new THREE.Vector3(0, 0, 1);
-const _g = new THREE.Vector3();
+const _g = new THREE.Vector3(), _gp = new THREE.Vector3();
+const GROUND_STEP = 3; // metres between ground checks along an arrow's path
 const _e = new THREE.Vector3(), _p0s = new THREE.Vector3(), _pv = new THREE.Vector3(), _c2 = new THREE.Vector3(), _sv = new THREE.Vector3(), _sw = new THREE.Vector3();
 const HEAD_R = 0.24, BODY_R = 0.46; // your hit balls (reference 0.7)
 // Where along a->b (0..1) the segment first comes within r of c, or -1.
@@ -194,19 +195,31 @@ export class ArrowSystem {
       if (h && (!best || h.t < best.t)) best = h;
     };
 
-    // Ground
-    const g1 = p1.y - groundHeight(p1.x, p1.z);
-    if (g1 < 0) {
-      const g0 = p0.y - groundHeight(p0.x, p0.z);
-      consider({ t: g0 <= 0 ? 0 : g0 / (g0 - g1), type: 'ground' });
+    // Ground: checked every few metres along the path, so a fast arrow can't
+    // step clean over a rise in one frame (§X).
+    const steps = Math.ceil(p0.distanceTo(p1) / GROUND_STEP);
+    let gPrev = p0.y - groundHeight(p0.x, p0.z);
+    if (gPrev <= 0) consider({ t: 0, type: 'ground' });
+    else {
+      for (let i = 1; i <= steps; i++) {
+        const k = i / steps;
+        _gp.lerpVectors(p0, p1, k);
+        const gNow = _gp.y - groundHeight(_gp.x, _gp.z);
+        if (gNow < 0) {
+          consider({ t: (i - 1 + gPrev / (gPrev - gNow)) / steps, type: 'ground' });
+          break;
+        }
+        gPrev = gNow;
+      }
     }
 
     // Each car, worked out in its own frame (where it was last frame to
     // where it is now), so the moving, turning train is handled right.
     for (const car of train.cars) {
       const r1 = p1.clone().applyMatrix4(car.inv);
-      if (Math.abs(r1.x) > 12 || r1.z < car.z0 - 12 || r1.z > car.z1 + 12) continue;
       const r0 = p0.clone().applyMatrix4(car.prevInv);
+      // Skip this car only if the whole path stays off to one side of it.
+      if (Math.min(r0.x, r1.x) > 12 || Math.max(r0.x, r1.x) < -12 || Math.max(r0.z, r1.z) < car.z0 - 12 || Math.min(r0.z, r1.z) > car.z1 + 12) continue;
       for (const c of car.colliders) {
         if (c.ghost) continue; // the invisible walls that keep you aboard
         const h = segmentBox(r0, r1, c.min, c.max);
@@ -259,7 +272,7 @@ export class ArrowSystem {
       sound.hurt();
     } else if (hit.type === 'rider') {
       // Stick into the part it hit, so it flies off with it.
-      a.mesh.position.copy(point).addScaledVector(dir, EMBED);
+      a.mesh.position.copy(hit.point).addScaledVector(dir, EMBED);
       a.mesh.quaternion.setFromUnitVectors(Z, dir);
       a.mesh.userData.arrow = true; // a hat keeps the arrow that took it (§T)
       hit.part.g.attach(a.mesh);

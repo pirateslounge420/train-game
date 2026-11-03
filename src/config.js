@@ -36,6 +36,7 @@ export const CONFIG = {
     regenPerSecond: 0.35, // very slow
     regenDelay: 4, // seconds after being hit before regen resumes
     startArrows: 20,
+    townArrows: 15, // a town tops you up to this many (§X)
     maxArrows: 40,
     grabReach: 3.4, // metres from your eyes to a stuck arrow you can grab
   },
@@ -44,8 +45,8 @@ export const CONFIG = {
   bow: {
     fullDrawTime: 1.0, // seconds to full draw; power follows (t² + 2t) / 3
     minPower: 0.1, // a draw weaker than this looses nothing
-    snapSpeed: 45, // m/s (100 mph) for a snap shot...
-    fullSpeed: 80, // ...up to 80 m/s (180 mph) at full draw
+    snapSpeed: 63, // m/s (140 mph) for a snap shot (§X's proposal: the old 45 : 80 ratio)...
+    fullSpeed: 112, // ...up to 112 m/s (250 mph) at full draw: the short cam bow (§X)
     zeroSnap: 15, // the arrow meets the crosshair at 15 m for a snap shot...
     zeroFull: 35, // ...and at 35 m at full draw; beyond that it drops
     drag: 0.0005, // tiny air drag

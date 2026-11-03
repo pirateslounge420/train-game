@@ -36,9 +36,9 @@ const CARS = [
 const BRAKE = 2.4; // m/s² when pulling into a town
 const TOWN_STOP = 6; // seconds at each town (§G)
 const MAX_SPEED = 200 * 0.44704; // never faster than 200 mph (§K)
-// The surge (§K): three a stretch, each +26 m/s on top of the last, reached
+// The surge (§K, §Y): two a stretch, each +26 m/s on top of the last, reached
 // at 6 m/s², bleeding off at 1.5 m/s each second.
-export const SURGES = 3;
+export const SURGES = 2;
 const SURGE_BOOST = 26, SURGE_ACCEL = 6, SURGE_BLEED = 1.5;
 const DRIVER_R = 1.22, PIN_R = 0.55; // eight-foot drivers (§N)
 
@@ -185,7 +185,7 @@ export class Train {
         this.d = townD;
         this.state = 'stop';
         this.stopT = TOWN_STOP;
-        this.surges = SURGES; // towns restock the three (§K)
+        this.surges = SURGES; // towns restock them (§Y)
         this.onArrive?.(this.nextTown);
       }
     }

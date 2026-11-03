@@ -1,6 +1,7 @@
 import { CONFIG } from '../config.js';
 import { TOUCH } from '../core/input.js';
 import { biomeOf } from '../world/line.js';
+import { SURGES } from '../train/train.js';
 
 // On-screen display: health, arrows, hit markers and messages.
 export class Hud {
@@ -60,7 +61,7 @@ export class Hud {
     set(this.st.tod, `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`);
     set(this.st.seed, String(day.seed));
     set(this.st.down, String(game.riders.kills));
-    const dots = '●'.repeat(t.surges) + '○'.repeat(Math.max(0, 3 - t.surges));
+    const dots = '●'.repeat(t.surges) + '○'.repeat(Math.max(0, SURGES - t.surges));
     set(this.st.surge, dots);
     set(this.surgeLbl, dots);
     this.surgeBtn.classList.toggle('empty', t.surges <= 0);
