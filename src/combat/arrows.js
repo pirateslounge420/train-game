@@ -11,6 +11,7 @@ import { groundHeight } from '../world/terrain.js';
 // short line segment it travelled and check what it hit first.
 
 const Z = new THREE.Vector3(0, 0, 1);
+const _g = new THREE.Vector3();
 const LENGTH = 0.9; // tip to nock, as in reference 0.7
 const EMBED = 0.2; // how far the tip sinks into what it hits
 const MAX_STUCK_IN_TRAIN = 70;
@@ -176,7 +177,6 @@ export class ArrowSystem {
       }
     }
 
-    this.collect(player);
   }
 
   // Find the first thing the segment p0->p1 hits.
@@ -259,23 +259,79 @@ export class ArrowSystem {
     this.stuck.splice(this.stuck.indexOf(s), 1);
   }
 
-  // Walk up to arrows stuck in the train to pick them up.
-  collect(player) {
-    if (player.dead || player.arrows >= CONFIG.player.maxArrows) return;
-    const centre = player.local.clone();
-    centre.y += 0.9;
-    for (let i = this.stuck.length - 1; i >= 0; i--) {
-      const s = this.stuck[i];
-      if (s.where !== 'train') continue;
-      // The middle of the arrow's shaft (the tip is buried).
-      const mid = new THREE.Vector3(0, 0, -LENGTH / 2).applyQuaternion(s.mesh.quaternion).add(s.mesh.position);
-      if (mid.distanceTo(centre) < CONFIG.player.pickupRadius) {
-        this.removeStuck(s);
-        player.arrows++;
-        this.game.hud.pickup();
-        this.game.sound.pickup();
-        if (player.arrows >= CONFIG.player.maxArrows) return;
+  // Grab (§C): pull a stuck arrow out of the train and back into the quiver.
+  // You can reach arrows within 3.4 m of your eyes that nothing is in the
+  // way of, and not while you're on a ladder.
+  grabPoint(s, out) {
+    // Up the shaft from the buried tip, toward the feathers.
+    return s.mesh.localToWorld(out.set(0, 0, -0.6));
+  }
+
+  reachable(player, s, eye) {
+    if (s.where !== 'train' || player.onLadder || player.dead) return false;
+    const p = this.grabPoint(s, _g);
+    if (p.distanceTo(eye) > CONFIG.player.grabReach) return false;
+    // Nothing solid between your eyes and the arrow (stop just short of it,
+    // so the plank it's stuck in doesn't count).
+    const t = this.game.train.position;
+    const a = eye.clone().sub(t);
+    const b = p.clone().sub(t).lerp(a, 0.06);
+    for (const c of this.game.train.colliders) if (segmentBox(a, b, c.min, c.max) !== null) return false;
+    return true;
+  }
+
+  reachableCount(player) {
+    const eye = player.eyeWorld();
+    let n = 0;
+    for (const s of this.stuck) if (this.reachable(player, s, eye)) n++;
+    return n;
+  }
+
+  // Grab button / right click / E: the reachable arrow nearest your crosshair.
+  grab(player, camera) {
+    const hud = this.game.hud;
+    if (!this.stuck.some((s) => s.where === 'train')) return hud.hint('No arrows stuck anywhere yet');
+    const eye = player.eyeWorld();
+    const look = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    let best = null;
+    let bd = 0.5;
+    let any = false;
+    for (const s of this.stuck) {
+      if (!this.reachable(player, s, eye)) continue;
+      any = true;
+      const d = this.grabPoint(s, _g).sub(eye).normalize().dot(look);
+      if (d > bd) {
+        bd = d;
+        best = s;
       }
     }
+    if (best) this.take(player, best);
+    else hud.hint(any ? 'Look at the arrow to grab it' : 'Walk closer to a stuck arrow');
+  }
+
+  // Tap on a phone: the reachable arrow within 60 px of your finger.
+  tapGrab(player, camera, x, y) {
+    const eye = player.eyeWorld();
+    let best = null;
+    let bd = 60;
+    for (const s of this.stuck) {
+      if (!this.reachable(player, s, eye)) continue;
+      const p = this.grabPoint(s, _g).project(camera);
+      if (p.z > 1) continue;
+      const d = Math.hypot(((p.x + 1) / 2) * innerWidth - x, ((1 - p.y) / 2) * innerHeight - y);
+      if (d < bd) {
+        bd = d;
+        best = s;
+      }
+    }
+    if (best) this.take(player, best);
+  }
+
+  take(player, s) {
+    if (player.arrows >= CONFIG.player.maxArrows) return this.game.hud.hint('Your quiver is full');
+    this.removeStuck(s);
+    player.arrows++;
+    this.game.hud.pickup();
+    this.game.sound.pickup();
   }
 }

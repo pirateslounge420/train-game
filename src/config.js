@@ -13,14 +13,21 @@ export const CONFIG = {
     fov: 72, // landscape screens (as in the reference build)
     portraitFov: 84, // phones held upright see a little wider
     drawZoom: 7, // degrees the view narrows at full draw (§U)
-    mouseSensitivity: 0.0022,
+    lookSensitivity: 0.22, // degrees per pixel, mouse and finger alike
   },
 
   player: {
-    walkSpeed: 3.2,
-    sprintSpeed: 5.6,
-    jumpSpeed: 5.0, // ~1.27 m jump height
-    climbSpeed: 2.4,
+    // Walking, as in reference 0.7 (§C, §M).
+    walkSpeed: 4.8, // m/s on a floor or deck
+    roofSpeed: 4.1, // m/s up on a roof
+    roofHeight: 4.0, // feet above this (train space) count as "on a roof"
+    drawSlow: 0.55, // walking speed while the bow is drawn
+    sprintBoost: 1.45, // double-tap forward and hold
+    sprintFov: 6, // degrees the view widens while sprinting
+    jumpSpeed: 4.6, // ~0.76 m jump height
+    gravity: 14, // the player falls faster than an arrow, as in the reference
+    climbSpeed: 1.9,
+    maxPitch: 1.35, // radians you can look up or down
     radius: 0.25,
     height: 1.75,
     eyeHeight: 1.62,
@@ -30,7 +37,7 @@ export const CONFIG = {
     regenDelay: 4, // seconds after being hit before regen resumes
     startArrows: 20,
     maxArrows: 40,
-    pickupRadius: 1.4,
+    grabReach: 3.4, // metres from your eyes to a stuck arrow you can grab
   },
 
   // Archery, ported from reference build 0.7 (§B, §L, §U).

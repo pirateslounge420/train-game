@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
-import { Input } from './core/input.js';
+import { Input, TOUCH } from './core/input.js';
 import { createSky, SKY } from './world/sky.js';
 import { Terrain } from './world/terrain.js';
 import { Smoke } from './world/smoke.js';
@@ -44,6 +44,8 @@ terrain.update(train.position.z, 99); // build the starting area all at once
 const smoke = new Smoke(scene);
 const player = new Player(train);
 
+document.body.classList.toggle('touch', TOUCH);
+
 const game = { scene, camera, train, player, sound, hud, terrain };
 game.arrows = new ArrowSystem(game);
 game.bandits = new BanditManager(game);
@@ -56,20 +58,27 @@ const overlayText = document.getElementById('overlay-text');
 const overlayButton = document.getElementById('overlay-button');
 let state = 'menu'; // menu | playing | paused | dead
 
+function play() {
+  state = 'playing';
+  input.active = true;
+  overlay.classList.add('hidden');
+}
+
 overlay.addEventListener('click', () => {
   if (state === 'dead') {
     location.reload();
     return;
   }
   sound.init();
-  input.lock();
+  // A phone has no mouse to capture: just start riding.
+  if (TOUCH) play();
+  else input.lock();
 });
 input.onLockChange = (locked) => {
-  if (locked && state !== 'dead') {
-    state = 'playing';
-    overlay.classList.add('hidden');
-  } else if (!locked && state === 'playing') {
+  if (locked && state !== 'dead') play();
+  else if (!locked && state === 'playing') {
     state = 'paused';
+    input.active = false;
     overlayTitle.textContent = 'Paused';
     overlayButton.textContent = 'Click to keep riding';
     overlay.classList.remove('hidden');
@@ -86,14 +95,12 @@ if (location.search.includes('debug')) {
     for (let i = 0; i < n; i++) update(dt);
     render(dt);
   };
-  window.startGame = () => {
-    state = 'playing';
-    overlay.classList.add('hidden');
-  };
+  window.startGame = play;
 }
 
 function showDeath() {
   state = 'dead';
+  input.active = false;
   document.exitPointerLock();
   overlayTitle.textContent = 'You died';
   overlayText.innerHTML = `${player.deathReason}<br>You rode ${(train.distance / 1609.34).toFixed(2)} miles and downed ${game.bandits.downed} bandits.`;
@@ -138,13 +145,16 @@ function update(dt) {
   train.update(dt);
   terrain.update(train.position.z);
   // Player physics in two half-steps for steadier collisions.
-  player.update(dt / 2, input);
-  player.update(dt / 2, input);
+  player.controls(input);
+  player.update(dt / 2);
+  player.update(dt / 2);
   player.applyCamera(camera, time);
   camera.updateMatrixWorld();
   player.bow.update(dt, input);
   game.bandits.update(dt);
   game.arrows.update(dt);
+  if (input.take('grabReq')) game.arrows.grab(player, camera);
+  for (const t of input.takeTaps()) game.arrows.tapGrab(player, camera, t.x, t.y);
   smoke.update(dt, train);
   player.updateHealth(dt);
   trainSounds(dt);

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <title>Train Game — Prototype</title>
     <link rel="stylesheet" href="style.css" />
     <script type="importmap">
@@ -29,23 +29,41 @@
         <div id="arrow-count"></div>
       </div>
       <div id="vignette"></div>
+      <!-- phone controls (§C): hidden when there's a mouse -->
+      <div id="touch">
+        <div class="bl">
+          <button id="grab" class="btn" type="button">Grab</button>
+          <div id="stick" aria-label="move"><div id="knob"></div></div>
+        </div>
+        <div class="br">
+          <button id="jump" class="btn" type="button">Jump</button>
+          <button id="draw" class="btn" type="button"><span>Draw</span><small id="drawn">20</small></button>
+        </div>
+      </div>
     </div>
 
     <div id="overlay">
       <div class="card">
         <h1 id="overlay-title">Train Game</h1>
         <p id="overlay-text">Bandits are riding up on the train. Keep her running.</p>
-        <table class="controls">
+        <table class="controls desktop-only">
           <tr><td>Mouse</td><td>Look around</td></tr>
-          <tr><td>W A S D</td><td>Walk (Shift to run)</td></tr>
+          <tr><td>W A S D</td><td>Walk (double-tap W and hold to sprint)</td></tr>
           <tr><td>Space</td><td>Jump</td></tr>
           <tr><td>W at a ladder</td><td>Climb (S to go down)</td></tr>
-          <tr><td>Hold left mouse</td><td>Draw the bow — longer = stronger</td></tr>
-          <tr><td>Release</td><td>Loose the arrow</td></tr>
+          <tr><td>Hold left mouse</td><td>Draw the bow, let go to loose</td></tr>
+          <tr><td>Right mouse / E</td><td>Grab the stuck arrow you look at</td></tr>
           <tr><td>Esc</td><td>Pause</td></tr>
         </table>
-        <p class="tip">Walk over arrows stuck in the train to pick them up. Aim for the head.</p>
-        <div id="overlay-button">Click to start riding</div>
+        <table class="controls touch-only">
+          <tr><td>Left stick</td><td>Walk (tap twice and hold to sprint)</td></tr>
+          <tr><td>Drag the view</td><td>Look around</td></tr>
+          <tr><td>Hold Draw</td><td>Draw the bow; drag the same finger to aim, let go to loose</td></tr>
+          <tr><td>Jump</td><td>Jump</td></tr>
+          <tr><td>Grab / tap</td><td>Pull a stuck arrow out (it lights up when one's in reach)</td></tr>
+        </table>
+        <p class="tip">Arrows that stick in the train can be pulled back out. Aim for the head.</p>
+        <div id="overlay-button"><span class="desktop-only">Click</span><span class="touch-only">Tap</span> to start riding</div>
       </div>
     </div>
 

@@ -37,16 +37,38 @@ server above.)
 
 ## Controls
 
+The game works on a computer and on a phone. A phone (or any touch screen
+without a mouse) gets on-screen controls automatically.
+
+**Computer**
+
 | Input | Action |
 | --- | --- |
 | Click the screen | Start / resume (captures the mouse) |
 | Mouse | Look around |
-| W A S D | Walk (hold **Shift** to run) |
+| W A S D | Walk. Tap **W** twice quickly and hold it to sprint |
 | Space | Jump |
 | W while facing a ladder | Climb up (S to climb down, Space to let go) |
 | Hold left mouse | Draw the bow: the longer you hold, the stronger the shot (full draw in one second) |
 | Release left mouse | Shoot. You can start the next draw straight away. A very short tap shoots nothing. |
+| Right mouse or E | Grab: pull out the stuck arrow you're looking at |
 | Esc | Pause |
+
+**Phone**
+
+| Input | Action |
+| --- | --- |
+| Tap the screen | Start |
+| Left stick | Walk. Tap it twice quickly and hold forward to sprint |
+| Drag anywhere on the view | Look around |
+| Hold **Draw** | Draw the bow; drag the same finger to aim; let go to shoot. It shows how many arrows you have |
+| **Jump** | Jump |
+| **Grab**, or tap a stuck arrow | Pull it out. Grab lights up when an arrow is in reach |
+
+Walking speeds are the reference build's (design §C, §M): 4.8 m/s on a
+floor, 4.1 m/s on a roof, a little over half that while the bow is drawn,
+and ×1.45 when sprinting (the view widens a touch). You can't sprint while
+drawing.
 
 ## What's in this prototype
 
@@ -85,8 +107,8 @@ server above.)
   more than body hits. Bandits aim where you're standing, so keep moving and
   use the crates for cover.
 - **Collecting arrows.** Bandit arrows (red feathers) and your own (white)
-  that hit the train stay stuck in it. Walk up to one to pull it out and add
-  it to your quiver (up to 40).
+  that hit the train stay stuck in it. Get within reach (3.4 m, nothing in
+  the way), look at one and Grab it to add it to your quiver (up to 40).
 
 ## Tweaking the game
 
@@ -103,12 +125,12 @@ start.command         double-click launcher (Mac)
 src/
   main.js             starts everything and runs the game loop
   config.js           all the tunable numbers
-  core/               input, maths helpers, shared materials
+  core/               input (keys, mouse, touch), maths helpers, materials
   world/              sky, endless terrain, smoke
   train/train.js      the train model, its moving parts and walkable surfaces
   player/player.js    walking, jumping, ladders, health
   combat/bow.js       drawing and shooting, and the bow you see in your hands
-  combat/arrows.js    arrow flight, hits, sticking, and picking them up
+  combat/arrows.js    arrow flight, hits, sticking, and grabbing them back
   enemies/bandits.js  horse riders: riding, shooting, hit zones, falling off
   ui/hud.js           health, arrows, hit markers, messages
   audio/sound.js      all sounds (generated in code, no audio files)

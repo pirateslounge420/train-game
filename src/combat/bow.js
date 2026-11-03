@@ -82,6 +82,11 @@ export class Bow {
       this.drawT = 0;
       return;
     }
+    if (input.take('cancelReq')) {
+      // the draw finger slid off, or the page was hidden: no shot
+      this.drawing = false;
+      this.drawT = 0;
+    }
     const held = input.drawHeld();
     if (!this.drawing && held && !this.wasHeld) this.startDraw();
     this.wasHeld = held;
@@ -93,8 +98,8 @@ export class Bow {
 
   startDraw() {
     const p = this.player;
-    if (p.onLadder) return this.game.hud.message('Hands on the ladder');
-    if (p.arrows <= 0) return;
+    if (p.onLadder) return this.game.hud.hint('Hands on the ladder');
+    if (p.arrows <= 0) return this.game.hud.hint('No arrows nocked. Grab the ones stuck in the cars.');
     this.drawing = true;
     this.drawT = 0;
     this.game.sound.creak();
@@ -138,10 +143,11 @@ export class Bow {
     return this.game.camera.localToWorld(out);
   }
 
-  // The view zooms a little as the bow charges.
+  // The view zooms a little as the bow charges, and widens as you sprint.
   fov(camera) {
     this.baseFov = camera.aspect < 1 ? CONFIG.view.portraitFov : CONFIG.view.fov;
-    return this.baseFov - CONFIG.view.drawZoom * this.power();
+    const sprint = this.player.sprinting ? CONFIG.player.sprintFov : 0;
+    return this.baseFov - CONFIG.view.drawZoom * this.power() + sprint;
   }
 
   // Animate the bow model (reference 0.7's updateBowRig) and draw it.

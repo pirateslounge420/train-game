@@ -50,30 +50,40 @@ export class Player {
   }
 
   look(dx, dy) {
-    const s = CONFIG.view.mouseSensitivity;
+    const s = (CONFIG.view.lookSensitivity * Math.PI) / 180;
     this.yaw -= dx * s;
-    this.pitch = clamp(this.pitch - dy * s, -1.5, 1.5);
+    this.pitch = clamp(this.pitch - dy * s, -C.maxPitch, C.maxPitch);
   }
 
-  update(dt, input) {
-    if (this.dead) return;
-    const fwd = (input.down('KeyW') || input.down('ArrowUp') ? 1 : 0) - (input.down('KeyS') || input.down('ArrowDown') ? 1 : 0);
-    const strafe = (input.down('KeyD') || input.down('ArrowRight') ? 1 : 0) - (input.down('KeyA') || input.down('ArrowLeft') ? 1 : 0);
-    const sprint = input.down('ShiftLeft') || input.down('ShiftRight');
-    const jump = input.down('Space');
+  // Read this frame's controls once (the physics then runs in half-steps).
+  // Another player's controls can be fed in the same way later (§W).
+  controls(input) {
+    const m = input.move();
+    this.ctl = { x: m.x, y: m.y, sprint: input.sprint, jump: input.take('jumpReq') };
+  }
 
-    // Desired horizontal velocity from keys, relative to where we look.
+  update(dt) {
+    if (this.dead) return;
+    const ctl = this.ctl || { x: 0, y: 0 };
+    const fwd = ctl.y;
+    const strafe = ctl.x;
+    const jump = ctl.jump;
+    ctl.jump = false;
+    const drawing = !!this.bow?.drawing;
+    // Sprint: double-tap forward and hold; not while drawing (§M).
+    this.sprinting = !!ctl.sprint && !drawing && fwd > 0.3;
+
+    // Walking velocity, relative to where we look. Reference 0.7's speeds:
+    // 4.8 m/s on a floor, 4.1 up on a roof, a little over half while drawing.
     const sin = Math.sin(this.yaw);
     const cos = Math.cos(this.yaw);
-    let wx = -sin * fwd + cos * strafe;
-    let wz = -cos * fwd - sin * strafe;
-    const wl = Math.hypot(wx, wz);
-    if (wl > 1) {
-      wx /= wl;
-      wz /= wl;
-    }
-    const speed = sprint ? C.sprintSpeed : C.walkSpeed;
-    const accel = this.onGround || this.onLadder ? 40 : 6;
+    const wx = -sin * fwd + cos * strafe;
+    const wz = -cos * fwd - sin * strafe;
+    const onRoof = this.local.y > C.roofHeight;
+    const speed = (onRoof ? C.roofSpeed : C.walkSpeed) * (drawing ? C.drawSlow : 1) * (this.sprinting ? C.sprintBoost : 1);
+    // Feet on something: you go where you push at once. In the air you
+    // still steer, just not instantly (so a push off a ladder carries).
+    const accel = this.onGround || this.onLadder ? 1e3 : 30;
     this.vel.x += clamp(wx * speed - this.vel.x, -accel * dt, accel * dt);
     this.vel.z += clamp(wz * speed - this.vel.z, -accel * dt, accel * dt);
 
@@ -89,7 +99,7 @@ export class Player {
         this.vel.z = cos * 3;
       }
     } else {
-      this.vel.y -= CONFIG.gravity * dt;
+      this.vel.y -= C.gravity * dt;
       if (jump && this.onGround) this.vel.y = C.jumpSpeed;
     }
 
@@ -98,9 +108,9 @@ export class Player {
     this.moveAxis('z', this.vel.z * dt);
     this.moveAxis('y', this.vel.y * dt);
 
-    // Head bob while walking.
-    const hs = Math.hypot(this.vel.x, this.vel.z);
-    if (this.onGround && hs > 0.5) this.bob += dt * hs * 2.4;
+    // Head bob while walking (reference 0.7: 11 rad/s, 3.5 cm).
+    const moving = Math.hypot(fwd, strafe) > 0.05;
+    this.bob = moving && this.onGround && !this.onLadder ? this.bob + dt * 11 : 0;
 
     // Fell off the train?
     if (this.local.y < 0.7) this.die('You fell off the train.');

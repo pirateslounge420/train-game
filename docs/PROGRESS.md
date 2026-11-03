@@ -1,5 +1,14 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (late night) — Claude Code: §Z.1 step 2, walking and phone controls (§C, §M)
+- Walking from reference 0.7 (`src/player/player.js`, `src/config.js`): 4.8 m/s on floors, 4.1 on roofs, ×0.55 while drawing, sprint ×1.45 by double-tapping forward (W or the stick) and holding, not while drawing, +6° view while sprinting; jump 4.6 m/s under 14 m/s² (about 0.76 m, was 1.27); ladders 1.9 m/s; look 0.22°/px for mouse and finger, ±1.35 rad pitch; head bob 11 rad/s, 3.5 cm. Velocity follows the input at once on a floor or ladder (as in the reference), with a little lag in the air so a push off a ladder carries.
+- Phone controls (`src/core/input.js`, `index.html`, `style.css`), sizes from the reference: left stick, drag the view to look, hold Draw and drag the same finger to aim (0.8×), Jump, Grab. They show only when there's no fine mouse pointer. On a phone the arrow count moves onto the Draw button and health moves to the top right. A tap on the start screen starts the run without a mouse lock.
+- Grab (§C) replaces walking over arrows: right click, E, the Grab button or a tap on the arrow pulls out the stuck arrow you look at within 3.4 m with nothing in the way (none from a ladder). The Grab button lights up when one is in reach. Short hints at the bottom of the screen, as in the reference.
+- Shift no longer sprints: §C gives Shift to the surge (§K) and §S to crouch. It does nothing until those steps.
+- Checked in the browser: walk 4.80, sprint 6.96, drawing 2.64 m/s; jump 0.78 m; the whole train walks end to end and back without a jump; Grab, look-drag, Draw-drag aim, Jump and the stick all respond in a phone-sized view. No console errors from the game.
+- Per-player (§W): each player reads their controls once a frame through `player.controls(input)`, so another player's input can be fed in the same way.
+- Not yet: Surge, Crouch and Stats buttons (their own steps), a pause on phones, and the repo isn't on GitHub Pages yet (§Z.2), so Mike can't open it on his phone from a link.
+
 ## 2026-11-03 (night) — Claude Code: §Z.1 step 1, archery and hitboxes (§B, §L, §U)
 - Ported from reference 0.7 into `src/combat/bow.js`, `src/combat/arrows.js`, `src/config.js`: draw over 1 s on the (t² + 2t) / 3 curve; a draw under 0.1 looses nothing; 45 m/s snap to 80 m/s full; the zeroed sight (the arrow leaves the bow in hand and meets the crosshair at 15–35 m, nose-up by the `fire()` formula); instant re-nock; kick on release; 7° zoom; 72° / 84° (portrait) base view; tiny drag; 40 s arrow life; 5 s in the ground; arrows inherit the train's velocity only; 20 to start, 40 cap; the reference's arrow model and bow rig numbers.
 - Trails: the 12-segment additive thread (3 cm to 4 mm) on every arrow, blue-white yours, orange-red theirs (§B, §U).
