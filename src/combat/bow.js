@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
-import { flat } from '../core/materials.js';
+import { facet, plain } from '../core/materials.js';
 import { clamp, placeBetween } from '../core/math.js';
 
 const B = CONFIG.bow;
@@ -46,10 +46,10 @@ export class Bow {
     this.scene.add(this.rig);
     const arc = new THREE.TorusGeometry(0.42, 0.02, 4, 14, Math.PI).toNonIndexed();
     arc.computeVertexNormals();
-    const bow = new THREE.Mesh(arc, flat(0x4a2e1a));
+    const bow = new THREE.Mesh(arc, plain(0x4a2e1a));
     bow.rotation.set(0, -Math.PI / 2, Math.PI / 2);
     this.rig.add(bow);
-    this.rig.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.14, 0.05), flat(0x2a1c10)));
+    this.rig.add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.14, 0.05), plain(0x2a1c10)));
     const stringMat = new THREE.MeshBasicMaterial({ color: 0xe8e2cf });
     this.strings = [0, 1].map(() => {
       const m = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 1, 3), stringMat);
@@ -61,17 +61,17 @@ export class Bow {
 
     // The nocked arrow: points along -Z, its tip at the origin.
     this.arrow = new THREE.Group();
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.8, 5).rotateX(Math.PI / 2), flat(0xc9b48a));
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.8, 5).rotateX(Math.PI / 2), plain(0xc9b48a));
     shaft.position.z = 0.5;
-    const head = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.12, 4).rotateX(-Math.PI / 2), flat(0x3a3a3a));
+    const head = new THREE.Mesh(facet(new THREE.ConeGeometry(0.035, 0.12, 4).rotateX(-Math.PI / 2)), plain(0x3a3a3a));
     head.position.z = 0.06;
-    const fl1 = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.07, 0.11), flat(0xf1efe6));
+    const fl1 = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.07, 0.11), plain(0xf1efe6));
     fl1.position.set(0, 0.035, 0.83);
-    const fl2 = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.004, 0.11), flat(0xf1efe6));
+    const fl2 = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.004, 0.11), plain(0xf1efe6));
     fl2.position.set(0.035, 0, 0.83);
     this.arrow.add(shaft, head, fl1, fl2);
     this.rig.add(this.arrow);
-    this.hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.07, 0.09), flat(0xb8865e));
+    this.hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.07, 0.09), plain(0xb8865e));
     this.rig.add(this.hand);
   }
 

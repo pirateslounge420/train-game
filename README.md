@@ -183,7 +183,7 @@ start.command         double-click launcher (Mac)
 src/
   main.js             starts everything and runs the game loop
   config.js           all the tunable numbers
-  core/               input (keys, mouse, touch), maths helpers, materials
+  core/               input (keys, mouse, touch), maths helpers, materials, textures
   world/line.js       the seed, the curving line, regions, biomes, towns, tunnels
   world/              also: the sky and the day, the country along the line, smoke
   train/train.js      the train model, its moving parts and walkable surfaces

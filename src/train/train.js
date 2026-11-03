@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { flat } from '../core/materials.js';
+import { facet, painted, plain, tiledBox, tiledCyl } from '../core/materials.js';
+import { texDetail, texIron, texPlanks } from '../core/textures.js';
 import { RAIL_TOP } from '../world/terrain.js';
 import { trackAt, forwardAt, rightAt, regionAt, regionSpeed, regionStart, ensureRegions } from '../world/line.js';
 
@@ -46,6 +47,19 @@ const C = {
   red: 0x7a2418, iron: 0x24201d, iron2: 0x36322e, brass: 0xc9a24a, wood2: 0x4a6a3a, roof: 0x2a2622,
   cab: 0x8a3a26, cabDark: 0x4e2216, rail: 0x2e2a28, deck: 0x5a4632,
 };
+
+// What each paint job is painted on (§J; reference 0.7): riveted plate, boards
+// or coal. Anything not listed stays a plain colour.
+const SKIN = new Map([
+  [C.iron, [texIron, 1]], [C.iron2, [texIron, 1]], [C.red, [texIron, 1]],
+  [C.wood2, [texPlanks, 2]], [C.cab, [texPlanks, 2]], [C.cabDark, [texPlanks, 2]], [C.roof, [texPlanks, 2]], [C.deck, [texPlanks, 2]],
+  [0x5e4a36, [texPlanks, 1]], [0x6e3a24, [texPlanks, 1]], [0x9a7a52, [texPlanks, 1]], [0x0a0a0c, [texDetail, 0.5]],
+]);
+function skin(color) {
+  if (typeof color !== 'number') return color;
+  const s = SKIN.get(color);
+  return s ? painted(color, s[0], s[1]) : plain(color);
+}
 
 export class Train {
   constructor(scene) {
@@ -227,7 +241,8 @@ export class Train {
   // A box of size w × h × d centred at (x, y, z). solid: arrows stick in it
   // and the player stands on it / bumps into it.
   box(w, h, d, color, x, y, z, solid = true) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), typeof color === 'number' ? flat(color) : color);
+    const mat = skin(color);
+    const m = new THREE.Mesh(tiledBox(w, h, d, mat.userData.tile), mat);
     m.position.set(x, y + TRAIN_Y, z + this.car.zc);
     m.castShadow = true;
     m.receiveShadow = true;
@@ -249,7 +264,8 @@ export class Train {
   }
 
   cyl(rt, rb, h, seg, color, x, y, z) {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), typeof color === 'number' ? flat(color) : color);
+    const mat = skin(color);
+    const m = new THREE.Mesh(tiledCyl(rt, rb, h, seg, mat.userData.tile), mat);
     m.position.set(x, y + TRAIN_Y, z + this.car.zc);
     m.castShadow = true;
     this.car.inner.add(m);
@@ -258,7 +274,7 @@ export class Train {
 
   // A smooth, plain wheel (28 sides, §Q) standing on the rail.
   wheel(r, x, z) {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.28, 28).rotateZ(Math.PI / 2), flat(0x14120f));
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.28, 28).rotateZ(Math.PI / 2), plain(0x14120f));
     m.position.set(x, r + TRAIN_Y, z + this.car.zc);
     m.castShadow = true;
     this.car.inner.add(m);
@@ -432,10 +448,10 @@ export class Train {
     const boiler = this.cyl(1.15, 1.15, 8.2, 24, C.iron2, 0, 3.6, -2.4);
     boiler.rotation.x = Math.PI / 2;
     this.solid(-1.1, 2.45, -6.5, 1.1, 4.75, 1.7);
-    for (const z of [0.6, -1.6, -3.8]) this.cyl(1.19, 1.19, 0.2, 24, flat(C.brass, { metalness: 0.6, roughness: 0.4 }), 0, 3.6, z).rotation.x = Math.PI / 2;
+    for (const z of [0.6, -1.6, -3.8]) this.cyl(1.19, 1.19, 0.2, 24, plain(C.brass), 0, 3.6, z).rotation.x = Math.PI / 2;
     this.cyl(1.22, 1.22, 1.1, 24, C.iron, 0, 3.6, -6.1).rotation.x = Math.PI / 2;
     this.box(0.6, 0.6, 0.5, C.brass, 0, 4.5, -6.9);
-    this.box(0.34, 0.34, 0.1, flat(0xfff2b0, { emissive: 0xfff2b0, emissiveIntensity: 1 }), 0, 4.5, -7.18, false);
+    this.box(0.34, 0.34, 0.1, plain(0xfff2b0, { emissive: 0xfff2b0, emissiveIntensity: 1 }), 0, 4.5, -7.18, false);
     this.cyl(0.5, 0.36, 1.7, 16, C.iron, 0, 5.4, -5.4);
     this.cyl(0.6, 0.66, 1.0, 16, C.brass, 0, 4.95, -2.2);
     this.cyl(0.44, 0.5, 0.7, 16, C.iron2, 0, 4.9, 0.2);
@@ -445,12 +461,12 @@ export class Train {
     this.box(3.3, 0.18, 3.6, C.roof, 0, 5.48, 3.8);
     for (const x of [-1.46, 1.46]) this.box(0.04, 1.2, 1.6, 0x1a3ce8, x, 4.4, 3.6, false);
     this.box(2.6, 0.08, 3.6, C.deck, 0, 2.54, 3.9);
-    this.firebox = flat(0xff7a2a, { emissive: 0xff4a10, emissiveIntensity: 1 });
+    this.firebox = plain(0xff7a2a, { emissive: 0xff4a10, emissiveIntensity: 1 });
     this.box(0.62, 0.42, 0.04, this.firebox, 0, 3.2, 2.27, false);
     for (const x of [-0.5, 0, 0.5]) this.cyl(0.08, 0.08, 0.04, 12, C.brass, x, 4.2, 2.27).rotation.x = Math.PI / 2;
     // Steam chests, the pilot and its cowcatcher.
     for (const x of [-1.38, 1.38]) this.box(0.95, 0.95, 2.3, C.iron2, x, 1.5, -5.2);
-    const cc = new THREE.Mesh(new THREE.ConeGeometry(1.4, 1.8, 4), flat(C.iron));
+    const cc = new THREE.Mesh(facet(new THREE.ConeGeometry(1.4, 1.8, 4)), plain(C.iron));
     cc.rotation.set(Math.PI / 2, 0, Math.PI / 4);
     cc.position.set(0, 0.95 + TRAIN_Y, -7.5 + this.car.zc);
     cc.scale.set(1, 1, 0.6);

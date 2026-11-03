@@ -13,6 +13,8 @@ export const CONFIG = {
     portraitFov: 84, // phones held upright see a little wider
     drawZoom: 7, // degrees the view narrows at full draw (§U)
     lookSensitivity: 0.22, // degrees per pixel, mouse and finger alike
+    frameLines: 720, // the picture is drawn this many lines tall, then scaled to fit (§Q)
+    shadows: false, // the reference has none, and they're costly on a phone
   },
 
   player: {

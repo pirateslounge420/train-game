@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
-import { flat } from '../core/materials.js';
+import { painted, plain, tiledBox, tiledCyl } from '../core/materials.js';
+import { canvasTex, texCloth, texDetail } from '../core/textures.js';
 import { rand } from '../core/math.js';
 import { groundHeight } from '../world/terrain.js';
 import { hash2 } from '../world/line.js';
@@ -76,14 +77,11 @@ function gangTexture(main, accent, pattern) {
     ctx.fillStyle = main;
     ctx.fillRect(24, 6, 3, 3);
   }
-  const t = new THREE.CanvasTexture(c);
-  t.magFilter = THREE.NearestFilter;
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+  return canvasTex(c);
 }
 
 function mesh(geo, color, parent, x = 0, y = 0, z = 0) {
-  const m = new THREE.Mesh(geo, typeof color === 'object' && color.isMaterial ? color : flat(color));
+  const m = new THREE.Mesh(geo, typeof color === 'object' && color.isMaterial ? color : plain(color));
   m.position.set(x, y, z);
   m.castShadow = true;
   parent.add(m);
@@ -108,7 +106,9 @@ function buildRig(defs, parts, look) {
         : kind === 'hoof' ? 0x120e0a
         : d.dark ? 0x1a120c
         : look.hide;
-      mesh(boxG(b[0], b[1], b[2]), color, g, b[3], b[4], b[5]);
+      // Bandanas are cloth and horses have a coat; ponchos carry their own pattern.
+      const skin = kind === 'bandana' ? painted(color, texCloth, 0.3) : !kind && !d.dark && look.hide !== undefined ? painted(color, texDetail, 1) : color;
+      mesh(tiledBox(b[0], b[1], b[2], skin.userData?.tile), skin, g, b[3], b[4], b[5]);
     }
     parts[d.n] = { def: d, g, hp: d.hp, on: true, name: d.n, rider: look.isRider };
     if (d.p && parts[d.p]) parts[d.p].g.add(g);
@@ -121,7 +121,7 @@ export class Riders {
     this.game = game;
     this.scene = game.scene;
     this.rigs = rigs;
-    this.gangs = rigs.gangs.map((g) => ({ ...g, accent: new THREE.Color(g.accent).getHex(), poncho: new THREE.MeshStandardMaterial({ map: gangTexture(g.main, g.accent, g.pattern), flatShading: true, roughness: 0.9 }) }));
+    this.gangs = rigs.gangs.map((g) => ({ ...g, accent: new THREE.Color(g.accent).getHex(), poncho: painted(0xffffff, gangTexture(g.main, g.accent, g.pattern), 0.6) }));
     this.riders = [];
     this.footmen = [];
     this.ragdolls = [];
@@ -131,7 +131,7 @@ export class Riders {
     this.hatShots = 0;
     this.spawnT = 7;
     this.gibGeo = boxG(0.1, 0.1, 0.1);
-    this.gibMat = flat(0x7a0d10);
+    this.gibMat = plain(0x7a0d10);
     this.stringMat = new THREE.MeshBasicMaterial({ color: 0xe8e2cf });
   }
 
@@ -163,14 +163,15 @@ export class Riders {
     // The hat: a wide brim, a tall crown, a band in the gang's colour.
     const hat = parts.hat.g;
     const hcol = new THREE.Color(pick(this.rigs.hatColors)).getHex();
-    mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.04, 10), hcol, hat);
-    mesh(new THREE.CylinderGeometry(0.2, 0.24, 0.3, 8), hcol, hat, 0, 0.17, 0);
+    const felt = painted(hcol, texCloth, 0.5);
+    mesh(tiledCyl(0.46, 0.46, 0.04, 10, 0.5), felt, hat);
+    mesh(tiledCyl(0.2, 0.24, 0.3, 8, 0.5), felt, hat, 0, 0.17, 0);
     mesh(boxG(0.42, 0.05, 0.42), gang.accent, hat, 0, 0.05, 0);
     // The poncho's tail, streaming behind in the wind.
     const cape = new THREE.Group();
     cape.position.set(0, 0.58, 0.2);
     parts.torso.g.add(cape);
-    mesh(boxG(0.56, 0.02, 0.75), gang.poncho, cape, 0, 0, 0.375);
+    mesh(tiledBox(0.56, 0.02, 0.75, 0.6), gang.poncho, cape, 0, 0, 0.375);
     // The bow, in the left hand.
     const bowG = new THREE.Group();
     bowG.position.set(0, -0.32, 0);
@@ -190,7 +191,7 @@ export class Riders {
   // bandolier strap across the poncho, a fringed hem. Looks only: none of it
   // is a hitbox, and it flies off with the part it hangs on.
   addKit(parts, gang, cape) {
-    const brass = flat(0xc9a24a, { metalness: 0.6, roughness: 0.35 });
+    const brass = plain(0xc9a24a);
     const leather = 0x6a4024;
     // Goggles over the dark face, between the bandana and the hat brim.
     const head = parts.head.g;
@@ -199,7 +200,7 @@ export class Riders {
     for (const x of [-0.062, 0.062]) {
       const ring = mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 10).rotateX(PI / 2), brass, head, x, GY, -0.13);
       ring.castShadow = false;
-      mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.01, 10).rotateX(PI / 2), flat(0xe8d8a8, { emissive: 0x3a3020, roughness: 0.2 }), head, x, GY, -0.152);
+      mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.01, 10).rotateX(PI / 2), plain(0xe8d8a8, { emissive: 0x3a3020 }), head, x, GY, -0.152);
     }
     // The bandolier, shoulder to hip, front and back.
     const torso = parts.torso.g;
@@ -208,7 +209,7 @@ export class Riders {
       strap.rotation.z = 0.78;
     }
     // A fringed hem on the poncho, the gang's two colours in turn.
-    const fringe = (i) => (i % 2 ? flat(gang.accent) : gang.poncho);
+    const fringe = (i) => (i % 2 ? plain(gang.accent) : gang.poncho);
     for (const z of [-0.225, 0.225]) for (let i = 0; i < 9; i++) mesh(boxG(0.035, 0.1, 0.015), fringe(i), torso, -0.26 + i * 0.065, -0.04, z);
     for (let i = 0; i < 8; i++) mesh(boxG(0.035, 0.015, 0.1), fringe(i), cape, -0.245 + i * 0.07, 0, 0.79);
     // The quiver over the right shoulder, fletching showing.

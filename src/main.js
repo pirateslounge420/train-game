@@ -20,9 +20,12 @@ import { Sound } from './audio/sound.js';
 
 // ---- renderer, scene, camera ----------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = true;
+function fitFrame() {
+  renderer.setPixelRatio(Math.min(devicePixelRatio, CONFIG.view.frameLines / Math.max(1, innerHeight)));
+  renderer.setSize(innerWidth, innerHeight);
+}
+fitFrame();
+renderer.shadowMap.enabled = CONFIG.view.shadows;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.autoClear = false;
 document.body.prepend(renderer.domElement);
@@ -262,7 +265,7 @@ function render(dt) {
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
+  fitFrame();
 });
 
 frame();

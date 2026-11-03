@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
-import { flat } from '../core/materials.js';
+import { facet, plain } from '../core/materials.js';
 import { segmentBox } from '../core/math.js';
 import { groundHeight } from '../world/terrain.js';
 
@@ -30,15 +30,15 @@ const TRAIL_N = 12; // a thread, not a comet (§U)
 // The arrow points along +Z with its tip at the origin.
 const geo = {
   shaft: new THREE.CylinderGeometry(0.013, 0.013, 0.8, 5).rotateX(Math.PI / 2).translate(0, 0, -0.5),
-  head: new THREE.ConeGeometry(0.035, 0.12, 4).rotateX(Math.PI / 2).translate(0, 0, -0.06),
+  head: facet(new THREE.ConeGeometry(0.035, 0.12, 4).rotateX(Math.PI / 2).translate(0, 0, -0.06)),
   fletchA: new THREE.BoxGeometry(0.004, 0.07, 0.11).translate(0, 0.035, -0.83),
   fletchB: new THREE.BoxGeometry(0.07, 0.004, 0.11).translate(0.035, 0, -0.83),
 };
 const mats = {
-  shaft: flat(0xc9b48a),
-  head: flat(0x3a3a3a),
-  playerFletch: flat(0xf1efe6),
-  enemyFletch: flat(0xc83c2c),
+  shaft: plain(0xc9b48a),
+  head: plain(0x3a3a3a),
+  playerFletch: plain(0xf1efe6),
+  enemyFletch: plain(0xc83c2c),
 };
 
 function makeArrowMesh(owner) {

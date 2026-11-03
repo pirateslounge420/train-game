@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { flat } from '../core/materials.js';
+import { facet, painted, plain, tiledBox, tiledCyl } from '../core/materials.js';
+import { texBark, texDetail, texPlanks, texStone } from '../core/textures.js';
 import {
   trackAt, trackNear, biomeParams, biomeOf, regionAt, regionStart, ensureRegions, tunnelNear, townNear,
   rngFor, vnoise, fbm, smooth, lerp, cellKey, cellOf, TRK_STEP,
@@ -55,21 +56,25 @@ function faceColor(x, z, h, out) {
 
 // ---- scenery models: one merged, vertex-coloured mesh each -----------------
 function mergeColored(parts) {
-  const pos = [], nor = [], col = [];
+  const pos = [], nor = [], col = [], uvs = [];
   for (const p of parts) {
     const g = p.geo.index ? p.geo.toNonIndexed() : p.geo;
     g.computeVertexNormals();
-    const pa = g.attributes.position.array, na = g.attributes.normal.array;
+    const pa = g.attributes.position.array, na = g.attributes.normal.array, ua = g.attributes.uv.array, us = p.uv || 1;
     for (let i = 0; i < pa.length; i++) {
       pos.push(pa[i]);
       nor.push(na[i]);
     }
-    for (let i = 0; i < pa.length / 3; i++) col.push(p.color.r, p.color.g, p.color.b);
+    for (let i = 0; i < pa.length / 3; i++) {
+      col.push(p.color.r, p.color.g, p.color.b);
+      uvs.push(ua[i * 2] * us, ua[i * 2 + 1] * us);
+    }
   }
   const out = new THREE.BufferGeometry();
   out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  out.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   return out;
 }
 const C = (h) => new THREE.Color(h);
@@ -77,11 +82,11 @@ const DECO = (() => {
   const D = {};
   const canopy = new THREE.ConeGeometry(1.7, 4.4, 10).translate(0, 3.3, 0);
   const trunk = new THREE.CylinderGeometry(0.2, 0.28, 1.5, 5).translate(0, 0.7, 0);
-  D.tree = mergeColored([{ geo: trunk, color: C(0x4a2e1a) }, { geo: canopy, color: C(0x3f8a2a) }]);
+  D.tree = mergeColored([{ geo: trunk, color: C(0x4a2e1a), uv: 1 }, { geo: canopy, color: C(0x3f8a2a), uv: 3 }]);
   const p1 = new THREE.ConeGeometry(1.3, 3.4, 10).translate(0, 2.6, 0);
   const p2 = new THREE.ConeGeometry(1.0, 3.0, 10).translate(0, 4.6, 0);
   const pt = new THREE.CylinderGeometry(0.18, 0.25, 1.3, 5).translate(0, 0.6, 0);
-  D.pine = mergeColored([{ geo: pt, color: C(0x3a2416) }, { geo: p1, color: C(0x1c5a2a) }, { geo: p2, color: C(0x246a30) }]);
+  D.pine = mergeColored([{ geo: pt, color: C(0x3a2416), uv: 1 }, { geo: p1, color: C(0x1c5a2a), uv: 3 }, { geo: p2, color: C(0x246a30), uv: 3 }]);
   const cac = [
     new THREE.CylinderGeometry(0.3, 0.36, 3.4, 10).translate(0, 1.7, 0),
     new THREE.BoxGeometry(0.9, 0.28, 0.28).translate(0.45, 1.7, 0),
@@ -89,16 +94,16 @@ const DECO = (() => {
     new THREE.BoxGeometry(0.8, 0.26, 0.26).translate(-0.4, 1.2, 0),
     new THREE.CylinderGeometry(0.15, 0.15, 1.0, 5).translate(-0.68, 1.7, 0),
   ];
-  D.cactus = mergeColored(cac.map((geo) => ({ geo, color: C(0x3f8a34) })));
-  D.rock = mergeColored([{ geo: new THREE.DodecahedronGeometry(1.2, 0).scale(1, 0.65, 1).translate(0, 0.4, 0), color: C(0xffffff) }]);
-  D.bush = mergeColored([{ geo: new THREE.IcosahedronGeometry(0.9, 0).scale(1, 0.7, 1).translate(0, 0.5, 0), color: C(0x4a8a2e) }]);
+  D.cactus = mergeColored(cac.map((geo) => ({ geo, color: C(0x3f8a34), uv: 2 })));
+  D.rock = mergeColored([{ geo: new THREE.DodecahedronGeometry(1.2, 0).scale(1, 0.65, 1).translate(0, 0.4, 0), color: C(0xffffff), uv: 2 }]);
+  D.bush = mergeColored([{ geo: new THREE.IcosahedronGeometry(0.9, 0).scale(1, 0.7, 1).translate(0, 0.5, 0), color: C(0x4a8a2e), uv: 2 }]);
   const ms1 = new THREE.CylinderGeometry(1, 1.15, 0.6, 12).translate(0, 0.7, 0);
   const ms2 = new THREE.CylinderGeometry(1.15, 1.4, 0.4, 12).translate(0, 0.2, 0);
-  D.mesa = mergeColored([{ geo: ms1, color: C(0xc06a3a) }, { geo: ms2, color: C(0x9a4e2a) }]);
+  D.mesa = mergeColored([{ geo: ms1, color: C(0xc06a3a), uv: 6 }, { geo: ms2, color: C(0x9a4e2a), uv: 6 }]);
   return D;
 })();
-const groundMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-const decoMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+const groundMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: texDetail });
+const decoMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: texDetail });
 const dummy = new THREE.Object3D();
 
 // ---- ground chunks -----------------------------------------------------------
@@ -109,6 +114,9 @@ function makeChunk(cx, cz) {
   const geo = new THREE.PlaneGeometry(CH, CH, SEG, SEG).rotateX(-Math.PI / 2);
   const p = geo.attributes.position;
   for (let i = 0; i < p.count; i++) p.setY(i, groundHeight(x0 + p.getX(i), z0 + p.getZ(i)));
+  // One copy of the texture every 4 m, carried across the squares unbroken.
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * CH) / 4 + (cx * CH) / 4, (uv.getY(i) * CH) / 4 + (cz * CH) / 4);
   const ng = geo.toNonIndexed();
   ng.computeVertexNormals();
   geo.dispose();
@@ -170,12 +178,13 @@ function makeChunk(cx, cz) {
 
 // ---- track pieces ------------------------------------------------------------
 const TP_LEN = 80;
-function stripGeo(rows, cols, getP) {
-  const pos = [], idx = [], p = new THREE.Vector3();
+function stripGeo(rows, cols, getP, getUV = (r, c) => [c, r]) {
+  const pos = [], uv = [], idx = [], p = new THREE.Vector3();
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < cols; c++) {
       getP(r, c, p);
       pos.push(p.x, p.y, p.z);
+      uv.push(...getUV(r, c));
     }
   for (let r = 0; r < rows - 1; r++)
     for (let c = 0; c < cols - 1; c++) {
@@ -184,6 +193,7 @@ function stripGeo(rows, cols, getP) {
     }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   const ng = g.toNonIndexed();
   ng.computeVertexNormals();
@@ -191,32 +201,34 @@ function stripGeo(rows, cols, getP) {
   return ng;
 }
 const mats = {
-  bed: flat(0x6e6258),
-  rail: flat(0x2e2a28, { metalness: 0.5, roughness: 0.5 }),
-  tie: flat(0x4a3220),
-  pole: flat(0x3a2a1c),
-  tube: new THREE.MeshStandardMaterial({ color: 0x2a2e3a, flatShading: true, roughness: 1, side: THREE.DoubleSide }),
-  stone: flat(0x4a5468),
-  dark: flat(0x06102a),
+  bed: painted(0x6e6258, texDetail),
+  rail: plain(0x2e2a28),
+  tie: painted(0x4a3220, texPlanks),
+  pole: painted(0x3a2a1c, texBark, 1),
+  tube: painted(0x2a2e3a, texStone, 2, { side: THREE.DoubleSide }),
+  stone: painted(0x4a5468, texStone),
+  dark: plain(0x06102a),
   lamp: new THREE.MeshBasicMaterial({ color: 0xffb347 }),
-  roof: flat(0x2a2430),
-  roof2: flat(0x2e2834),
-  planks: flat(0x7a6a58),
-  window: flat(0x1a3ce8),
+  roof: plain(0x2a2430),
+  roof2: plain(0x2e2834),
+  planks: painted(0x7a6a58, texPlanks),
+  window: plain(0x1a3ce8),
 };
-const tieGeo = new THREE.BoxGeometry(2.5, 0.14, 0.26);
-const poleGeo = new THREE.CylinderGeometry(0.1, 0.13, 7, 5);
+const tieGeo = tiledBox(2.5, 0.14, 0.26, 2);
+const poleGeo = tiledCyl(0.1, 0.13, 7, 5, 1);
 const barGeo = new THREE.BoxGeometry(1.4, 0.12, 0.12);
 
 function box(w, h, d, mat, x, y, z, parent) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), typeof mat === 'number' ? flat(mat) : mat);
+  if (typeof mat === 'number') mat = plain(mat);
+  const m = new THREE.Mesh(tiledBox(w, h, d, mat.userData.tile), mat);
   m.position.set(x, y, z);
   m.castShadow = m.receiveShadow = true;
   parent.add(m);
   return m;
 }
 function cylinder(rt, rb, h, seg, mat, x, y, z, parent) {
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), typeof mat === 'number' ? flat(mat) : mat);
+  if (typeof mat === 'number') mat = plain(mat);
+  const m = new THREE.Mesh(tiledCyl(rt, rb, h, seg, mat.userData.tile), mat);
   m.position.set(x, y, z);
   m.castShadow = true;
   parent.add(m);
@@ -230,7 +242,7 @@ function makePiece(k) {
   const P = [];
   for (let i = 0; i <= n; i++) P.push(trackAt(sA + i * TRK_STEP, { x: 0, z: 0, th: 0 }));
   const across = (t, w, y, o) => o.set(t.x + Math.cos(t.th) * w, y, t.z + Math.sin(t.th) * w);
-  const bed = stripGeo(n + 1, 2, (r, c, o) => across(P[r], c ? 2.7 : -2.7, BED_Y, o));
+  const bed = stripGeo(n + 1, 2, (r, c, o) => across(P[r], c ? 2.7 : -2.7, BED_Y, o), (r, c) => [c * 1.35, r * 0.5]);
   own.push(bed);
   const bm = new THREE.Mesh(bed, mats.bed);
   bm.receiveShadow = true;
@@ -282,7 +294,7 @@ function makePiece(k) {
         arch.push([Math.cos(ang) * 3.7, 1.3 + Math.sin(ang) * 3.7]);
       }
       const ring = [[-3.7, -0.5], [-3.7, 1.3]].concat(arch.slice(1, 8)).concat([[3.7, 1.3], [3.7, -0.5], [0, -0.45], [-3.7, -0.5]]);
-      const tube = stripGeo(i1 - i0 + 1, ring.length, (r, c, o) => across(P[i0 + r], ring[c][0], ring[c][1], o));
+      const tube = stripGeo(i1 - i0 + 1, ring.length, (r, c, o) => across(P[i0 + r], ring[c][0], ring[c][1], o), (r, c) => [c * 2.2, r * 0.8]);
       own.push(tube);
       g.add(new THREE.Mesh(tube, mats.tube));
       for (let i = i0; i <= i1; i += 12)
@@ -317,13 +329,15 @@ function makePiece(k) {
   return { group: g, own };
 }
 
+const boards = (color) => painted(color, texPlanks);
+
 // A town: platform, station with its roof, water tower, a few houses (§G).
 function makeTown(i) {
   const t = new THREE.Group();
   const R = rngFor(i, 3, 3), rand = (a, b) => a + R() * (b - a), pick = (a) => a[Math.floor(R() * a.length)];
   box(4, 0.9, 26, mats.planks, 3.9, 0.45, 0, t);
-  box(7, 4.5, 12, pick([0x9a4a2e, 0x7a5a3e, 0x8a6a48]), 8.6, 2.25, 0, t);
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 4), mats.roof);
+  box(7, 4.5, 12, boards(pick([0x9a4a2e, 0x7a5a3e, 0x8a6a48])), 8.6, 2.25, 0, t);
+  const roof = new THREE.Mesh(facet(new THREE.ConeGeometry(1, 1, 4)), mats.roof);
   roof.rotation.y = Math.PI / 4;
   roof.scale.set(5.6, 2.4, 9.6);
   roof.position.set(8.6, 5.7, 0);
@@ -332,16 +346,16 @@ function makeTown(i) {
   box(1.2, 1.4, 0.2, mats.window, 5.0, 2.6, 2.6, t);
   const wt = new THREE.Group();
   wt.position.set(-6.5, 0, 9);
-  for (const [x, z] of [[-1.1, -1.1], [1.1, -1.1], [-1.1, 1.1], [1.1, 1.1]]) box(0.22, 5, 0.22, 0x4a3626, x, 2.5, z, wt);
-  cylinder(1.7, 1.7, 2.6, 8, 0x6a4a2e, 0, 6.2, 0, wt);
+  for (const [x, z] of [[-1.1, -1.1], [1.1, -1.1], [-1.1, 1.1], [1.1, 1.1]]) box(0.22, 5, 0.22, painted(0x4a3626, texBark, 1), x, 2.5, z, wt);
+  cylinder(1.7, 1.7, 2.6, 8, boards(0x6a4a2e), 0, 6.2, 0, wt);
   cylinder(0.1, 2.0, 1.1, 8, mats.roof, 0, 8.0, 0, wt);
   t.add(wt);
   for (let h = 0; h < 5; h++) {
     const side = h % 2 ? 1 : -1;
     const x = side * rand(13, 30), z = rand(-30, 30);
     const w = rand(4, 7), d = rand(5, 9), hh = rand(3, 4.2);
-    box(w, hh, d, pick([0x7a5a3e, 0x8e6a46, 0x5e4a36, 0x9a7a52]), x, hh / 2, z, t);
-    const r = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 4), mats.roof2);
+    box(w, hh, d, boards(pick([0x7a5a3e, 0x8e6a46, 0x5e4a36, 0x9a7a52])), x, hh / 2, z, t);
+    const r = new THREE.Mesh(facet(new THREE.ConeGeometry(1, 1, 4)), mats.roof2);
     r.rotation.y = Math.PI / 4;
     r.scale.set(w * 0.8, rand(1.6, 2.4), d * 0.8);
     r.position.set(x, hh + r.scale.y / 2, z);

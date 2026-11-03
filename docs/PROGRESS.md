@@ -1,5 +1,16 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (evening) — Claude Code: §Z.1 step 8, the look (§J, §Q)
+- New `src/core/textures.js`, ported from reference 0.7: the painted detail, planks, riveted iron, bark, stone and cloth textures, filtered with mipmaps and anisotropy. They now cover the ground, scenery, track bed, ties, poles, tunnel stone, towns, all four cars, horses' coats, bandanas, hats and ponchos. Which paint gets which texture on the train is a small table in `train.js`.
+- All materials are now matte Lambert, as in the reference: no shine (§J), and round things shade smooth while four-sided shapes keep their faces (§Q). `flat()` is now `plain()`, with `painted()` beside it in `core/materials.js`.
+- The picture is drawn 720 lines tall and scaled to fit (§Q), so a phone draws far fewer pixels: 332×720 at phone size, down from 750×1624. On a big desktop window it will look a little softer.
+- Shadows are off, because the reference has none and they cost a lot on a phone. `view.shadows` in `config.js` turns them back on. That one is for Mike to judge in play.
+- Fonts from the reference: Rye for titles and callouts, Barlow Condensed for the rest, from Google Fonts, with plain fallbacks offline.
+- The sky, palette, navy shade, fog, terrain cells and model sides were already right from the earlier steps.
+- Checked in the browser (seed 7), at desktop and phone size: train, ground, a rider, a town and the cabin in a tunnel all draw with no page errors or warnings. 2.2 ms a frame on average, 18 ms at worst, on the Mac at phone size. The tunnel's stone is too dark from the cabin to judge the texture. Not tested on a real phone, so the speed gain there isn't measured.
+- Not compared side by side with the reference: its three.js copy won't load in this browser pane, so this port rests on its code and numbers. The repo's colour handling (three.js r160) also differs from the reference's r128, so sunlit and shaded areas can differ slightly in brightness.
+- §V's re-skin is not in this step.
+
 ## 2026-11-03 (evening) — Claude Code: §Z.1 step 7, the HUD and stats panel (§I)
 - Clean by default, as in reference 0.7: the crosshair, the buttons and the speed. The old stats line and the bottom-corner health bar and arrow count are gone. Speed is big mph over small km/h; tap it to swap, and it's remembered on that device.
 - Hold Tab (desktop) or the Stats button (phone) for the panel: distance, country, arrows, riders down, headshots, hats racked (of 4), hat shots, wearing, best run, time (tap: +3 h) and seed. On a short screen it goes to two columns.

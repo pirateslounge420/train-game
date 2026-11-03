@@ -4,7 +4,7 @@ body {
   height: 100%;
   overflow: hidden;
   background: #1c140e;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
   color: #f6ead4;
   user-select: none;
   -webkit-user-select: none;
@@ -110,6 +110,7 @@ body:not(.touch) #touch {
 #cross.big .xm line { stroke: #e2aa3f; stroke-width: 3.5; }
 
 #callout {
+  font-family: 'Rye', Georgia, serif;
   position: absolute;
   top: 34%;
   width: 100%;
@@ -202,7 +203,7 @@ body:not(.touch) #touch {
   text-align: center;
   box-shadow: 0 10px 40px #000a;
 }
-.card h1 { margin: 0 0 8px; font-size: 38px; letter-spacing: 3px; color: #ffd38a; }
+.card h1 { margin: 0 0 8px; font-family: 'Rye', Georgia, serif; font-weight: 400; font-size: 36px; color: #ffd38a; }
 .controls { margin: 14px auto; border-collapse: collapse; font-size: 15px; text-align: left; }
 .controls td { padding: 3px 10px; }
 .controls td:first-child { color: #ffd38a; white-space: nowrap; }
@@ -309,6 +310,7 @@ body.touch #prompt { bottom: 196px; padding: 0 16px; box-sizing: border-box; }
 
 /* Town names and tunnel warnings (§G), as in reference 0.7. */
 #banner {
+  font-family: 'Rye', Georgia, serif;
   position: absolute;
   left: 0;
   right: 0;
@@ -321,6 +323,7 @@ body.touch #prompt { bottom: 196px; padding: 0 16px; box-sizing: border-box; }
   padding: 0 16px;
 }
 #banner small {
+  font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
   display: block;
   font-size: 15px;
   letter-spacing: 2px;
