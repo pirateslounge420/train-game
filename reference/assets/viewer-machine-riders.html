@@ -42,35 +42,69 @@
 // Use (node):     const MR=require('./machine-riders.js').MachineRiders
 //
 // Piece grammar, in the part's own space (y up, -z forward; the rider sits facing -z):
+//   ['plate', w,h,d, x,y,z, mat, chamfer]  (a chamfered box)    ['riv', x,y,z] (a rivet)    ['spr', size, x,y,z] (a bloom of energy light)
 //   ['box', w,h,d, x,y,z, mat]    ['cyl', rTop,rBot,h, x,y,z, mat, axis('x'|'y'|'z'), segments]    ['sph', r, x,y,z, mat]    ['torus', R,tube, x,y,z, mat, arc]
 (function(root){
 'use strict';
 const PI=Math.PI;
 
 const SKINS={
-  goldLightning:{ name:'Gold Lightning', plate:0xc9a227, plate2:0x8a6a1c, under:0x1a1a1f, chrome:0x9a8a5a, accent:0x3dff8a, eye:0x9cffc4,
+  goldLightning:{ name:'Gold Lightning', plate:0xc9a227, plate2:0x8a6a1c, under:0x1a1a1f, chrome:0x9a8a5a, accent:0x46ff5e, eye:0xb0ffb8,
     hat:0x6b3f1e, band:'poncho', bandana:0x2f9a4a, coat:0x3a2a1c, glove:0x7a4a22, boot:0x15120f, quiver:0x4a2e18, mane:0x151515,
     poncho:{pattern:'lightning',base:'#2f8f3a',mark:'#f0d030'}, bow:'compound', bowColor:0xc9a227 },
-  violetChevron:{ name:'Violet Chevron', plate:0x1b1c25, plate2:0x272938, under:0x101117, chrome:0x7d8292, accent:0xa877ff, eye:0xc9a6ff,
+  violetChevron:{ name:'Violet Chevron', plate:0x2a2c3a, plate2:0x3b3e52, under:0x13141b, chrome:0x8d93a4, accent:0xa877ff, eye:0xc9a6ff,
     hat:0x101117, band:0x5a2ad0, bandana:0x7b55f0, coat:0x1a1622, glove:0x101117, boot:0x14110f, quiver:0x101117, mane:0x101117,
     poncho:{pattern:'chevron',base:'#1c1030',mark:'#8a5cf0'}, bow:'recurve', bowColor:0x6f33e8 },
 };
 
+// ---- materials: brass and iron with a painted grain, cloth with a weave, energy that glows ----
 function makeMaterials(THREE,skin){
-  const L=(c,o)=>new THREE.MeshLambertMaterial(Object.assign({color:c},o||{}));
   const A=new THREE.Color(skin.accent), Ad=A.clone().multiplyScalar(0.36);
+  const grain=grainTexture(THREE,'metal'), weave=grainTexture(THREE,'cloth'), leather=grainTexture(THREE,'leather');
+  const metal=(c,shine,spec)=>new THREE.MeshPhongMaterial({color:c,map:grain,shininess:shine,specular:spec});
+  const cloth=(c,map)=>new THREE.MeshLambertMaterial({color:c,map:map||weave});
   const M={};
-  for(const k of ['plate','plate2','under','chrome','hat','bandana','coat','glove','boot','quiver','mane']) M[k]=L(skin[k]);
-  M.glow=L(Ad.getHex(),{emissive:A.getHex(),emissiveIntensity:0.9});   // energy: veins, bands, hubs, bow marks
+  M.plate=metal(skin.plate,55,0x66573a); M.plate2=metal(skin.plate2,40,0x4a4030); M.under=metal(skin.under,18,0x222228);
+  M.chrome=new THREE.MeshPhongMaterial({color:skin.chrome,shininess:120,specular:0xd0d0d8});
+  M.hat=cloth(skin.hat,leather); M.bandana=cloth(skin.bandana); M.coat=cloth(skin.coat); M.glove=cloth(skin.glove,leather); M.boot=cloth(skin.boot,leather); M.quiver=cloth(skin.quiver,leather);
+  M.strap=cloth(0x3a2616,leather); M.mane=new THREE.MeshLambertMaterial({color:skin.mane});
+  M.glow=new THREE.MeshLambertMaterial({color:Ad.getHex(),emissive:A.getHex(),emissiveIntensity:0.9});   // energy: veins, bands, hubs, bow marks
   M.eye=new THREE.MeshBasicMaterial({color:skin.eye});                  // horse eye, goggle lenses, forehead lens: unlit, always bright
-  M.bow=L(skin.bowColor,{emissive:skin.bow==='recurve'?Ad.getHex():0x000000});
-  M.shaft=L(0xcdbf9a); M.fletch=L(parseInt(skin.poncho.mark.slice(1),16)); M.string=new THREE.MeshBasicMaterial({color:0xe8e2cf});
-  M.void=L(0x07060c);
-  M.poncho=L(0xffffff,{map:ponchoTexture(THREE,skin.poncho,2)});
-  M.band=skin.band==='poncho'?L(0xffffff,{map:ponchoTexture(THREE,skin.poncho,6)}):L(skin.band);
+  M.bow=skin.bow==='compound'?metal(skin.bowColor,70,0x77653a):new THREE.MeshLambertMaterial({color:skin.bowColor,emissive:Ad.getHex()});
+  M.shaft=cloth(0xcdbf9a); M.fletch=cloth(parseInt(skin.poncho.mark.slice(1),16)); M.string=new THREE.MeshBasicMaterial({color:0xe8e2cf});
+  M.void=new THREE.MeshLambertMaterial({color:0x07060c});
+  M.poncho=cloth(0xffffff,ponchoTexture(THREE,skin.poncho,2));
+  M.band=skin.band==='poncho'?cloth(0xffffff,ponchoTexture(THREE,skin.poncho,6)):cloth(skin.band);
+  M.spr=new THREE.SpriteMaterial({map:glowSprite(THREE),color:A.getHex(),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:0.6});
+  M._accent=A;
+  // with an sRGB-output renderer (the viewer), hex colours must be taken as sRGB, or everything washes out
+  if(skin._srgb){ for(const k in M){ const m=M[k]; if(m&&m.color&&m.color.convertSRGBToLinear) m.color.convertSRGBToLinear(); if(m&&m.emissive&&m.emissive.convertSRGBToLinear) m.emissive.convertSRGBToLinear(); if(m&&m.specular&&m.specular.convertSRGBToLinear) m.specular.convertSRGBToLinear(); } }
   return M;
 }
-// the poncho cloth, drawn once on a canvas: chevrons or lightning bolts
+// a grey grain, tinted by each material's colour: brushed metal with panel scratches, a cloth weave, a leather pebble
+const _texCache={};
+function grainTexture(THREE,kind){
+  if(_texCache[kind]) return _texCache[kind];
+  const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+  g.fillStyle='#d6d6d6'; g.fillRect(0,0,128,128);
+  let seed=7; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  if(kind==='metal'){ for(let i=0;i<900;i++){ const v=170+Math.floor(rnd()*70); g.fillStyle='rgb('+v+','+v+','+v+')'; g.fillRect(rnd()*128,rnd()*128,1+rnd()*14,1); }
+    g.fillStyle='rgba(60,50,40,0.35)'; for(let i=0;i<10;i++){ g.fillRect(rnd()*128,rnd()*128,rnd()*40,1); }
+    g.fillStyle='rgba(255,250,230,0.25)'; for(let i=0;i<14;i++){ g.fillRect(rnd()*128,rnd()*128,rnd()*20,1); } }
+  else if(kind==='cloth'){ for(let y=0;y<128;y+=2) for(let x=0;x<128;x+=2){ const v=200+Math.floor(rnd()*40)-((x+y)%4?0:18); g.fillStyle='rgb('+v+','+v+','+v+')'; g.fillRect(x,y,2,2); } }
+  else { for(let i=0;i<1400;i++){ const v=150+Math.floor(rnd()*80); g.fillStyle='rgb('+v+','+v+','+v+')'; g.fillRect(rnd()*128,rnd()*128,2+rnd()*3,2+rnd()*3); } }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(2,2); t.anisotropy=4; t.minFilter=THREE.LinearMipmapLinearFilter;
+  return _texCache[kind]=t;
+}
+// a soft radial disc for the light that blooms off eyes, lenses and hubs
+function glowSprite(THREE){
+  if(_texCache.spr) return _texCache.spr;
+  const c=document.createElement('canvas'); c.width=c.height=64; const g=c.getContext('2d');
+  const gr=g.createRadialGradient(32,32,0,32,32,32); gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(0.25,'rgba(255,255,255,0.55)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=gr; g.fillRect(0,0,64,64);
+  return _texCache.spr=new THREE.CanvasTexture(c);
+}
+// the poncho cloth, drawn once on a canvas: chevrons or lightning bolts, with a weave over it
 function ponchoTexture(THREE,p,repeat){
   const c=document.createElement('canvas'); c.width=128; c.height=128; const g=c.getContext('2d');
   g.fillStyle=p.base; g.fillRect(0,0,128,128); g.fillStyle=p.mark;
@@ -84,56 +118,70 @@ function ponchoTexture(THREE,p,repeat){
       const pts=[[0,0],[10,0],[4,18],[12,18],[-2,44],[2,26],[-6,26]];
       for(const yy of [y0-64,y0,y0+64]){ g.beginPath(); pts.forEach(([x,y],i)=>i?g.lineTo(x0+x,yy+y):g.moveTo(x0+x,yy+y)); g.closePath(); g.fill(); } }
   }
+  let seed=3; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  for(let y=0;y<128;y+=2) for(let x=0;x<128;x+=2){ if((x+y)%4===0||rnd()<0.08){ g.fillStyle='rgba(0,0,0,'+(0.06+rnd()*0.08)+')'; g.fillRect(x,y,2,2); } }
   const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(repeat,repeat);
-  t.magFilter=THREE.LinearFilter; t.minFilter=THREE.LinearMipmapLinearFilter; t.anisotropy=4;
+  t.magFilter=THREE.LinearFilter; t.minFilter=THREE.LinearMipmapLinearFilter; t.anisotropy=4; if(THREE.sRGBEncoding) t.encoding=THREE.sRGBEncoding;
   return t;
+}
+// a plate is a chamfered box: the edges catch the light. Extruded along its thinnest axis so every long edge is bevelled.
+const _geoCache={};
+function plateGeo(THREE,w,h,d,c){
+  const key=[w,h,d,c].join(','); if(_geoCache[key]) return _geoCache[key];
+  const mn=Math.min(w,h,d); c=Math.min(c,mn*0.4);
+  let a,b,depth,rot; if(mn===d){ a=w;b=h;depth=d;rot=null; } else if(mn===w){ a=d;b=h;depth=w;rot='y'; } else { a=w;b=d;depth=h;rot='x'; }
+  const sh=new THREE.Shape(); const ax=a/2-c, by=b/2-c; sh.moveTo(-ax,-by); sh.lineTo(ax,-by); sh.lineTo(ax,by); sh.lineTo(-ax,by); sh.lineTo(-ax,-by);
+  const g=new THREE.ExtrudeGeometry(sh,{depth:depth-2*c,bevelEnabled:true,bevelThickness:c,bevelSize:c,bevelSegments:2,steps:1,curveSegments:1});
+  g.translate(0,0,-(depth-2*c)/2); if(rot==='y') g.rotateY(PI/2); else if(rot==='x') g.rotateX(PI/2);
+  g.computeVertexNormals();
+  return _geoCache[key]=g;
 }
 
 // ---- the horse: a machine. Pivots, masses, hit zones as HORSE_RIG. ----
 const HORSE=[
  {n:'barrel',p:null,at:[0,0,0],rot:[0,0,0],mass:160,c:[0,0,0],r:0.5,pri:13,hp:3, hit:[[0.5,0.7,1.1,0,0,0.05]],
-  pieces:[['box',0.5,0.7,1.1,0,0,0.05,'under'],['box',0.54,0.5,0.82,0,0.02,0.05,'plate'],['box',0.44,0.06,0.9,0,0.36,0.05,'plate2'],['box',0.52,0.12,0.3,0,-0.28,0.05,'under'],
+  pieces:[['box',0.5,0.7,1.1,0,0,0.05,'under'],['plate',0.56,0.56,0.92,0,0.03,0.05,'plate',0.06],['plate',0.44,0.06,0.9,0,0.36,0.05,'plate2'],['box',0.52,0.12,0.3,0,-0.28,0.05,'under'],...rivets(0,0.5,0.86,0.28,0.03,0.05,'x'),...rivets(0,0.5,0.86,-0.28,0.03,0.05,'x'),['box',0.54,0.05,0.03,0,-0.06,-0.5,'strap'],['box',0.56,0.03,0.07,0,-0.12,0.12,'strap'],['box',0.3,0.06,0.5,0,0.4,0.05,'strap'],['box',0.02,0.3,0.06,-0.285,0.2,0.1,'strap'],['box',0.02,0.3,0.06,0.285,0.2,0.1,'strap'],['torus',0.045,0.01,-0.285,0.04,0.1,'chrome'],['torus',0.045,0.01,0.285,0.04,0.1,'chrome'],
           ['box',0.012,0.03,0.7,-0.272,0.1,0.05,'glow'],['box',0.012,0.03,0.7,0.272,0.1,0.05,'glow'],
           ['box',0.012,0.34,0.03,-0.272,-0.06,-0.25,'glow'],['box',0.012,0.34,0.03,0.272,-0.06,-0.25,'glow'],
           ['box',0.012,0.22,0.03,-0.272,-0.12,0.32,'glow'],['box',0.012,0.22,0.03,0.272,-0.12,0.32,'glow'],
           ['box',0.3,0.03,0.012,0,-0.2,-0.5,'glow'],['box',0.03,0.03,0.03,-0.26,0.22,-0.3,'chrome'],['box',0.03,0.03,0.03,0.26,0.22,-0.3,'chrome'],['box',0.03,0.03,0.03,-0.26,0.22,0.4,'chrome'],['box',0.03,0.03,0.03,0.26,0.22,0.4,'chrome']]},
  {n:'croup',p:'barrel',at:[0,0.02,0.6],rot:[0,0,0],mass:70,c:[0,0,0.3],r:0.42,pri:12,hp:2, hit:[[0.46,0.6,0.6,0,0,0.3]],
-  pieces:(function(){ const p=[['box',0.46,0.6,0.6,0,0,0.3,'plate'],['box',0.4,0.05,0.5,0,0.3,0.3,'plate2'],['box',0.012,0.03,0.4,-0.233,0.18,0.3,'glow'],['box',0.012,0.03,0.4,0.233,0.18,0.3,'glow']];
-    for(const s of [-1,1]){ p.push(['cyl',0.16,0.16,0.06,s*0.25,0,0.3,'plate2','x',10]); p.push(['cyl',0.05,0.05,0.09,s*0.25,0,0.3,'glow','x',10]);
-      for(let i=0;i<8;i++){ const a=i/8*PI*2; p.push(['box',0.05,0.05,0.05,s*0.25,Math.cos(a)*0.17,0.3+Math.sin(a)*0.17,'plate2']); } } // the hip gear's teeth
+  pieces:(function(){ const p=[['plate',0.46,0.6,0.6,0,0,0.3,'plate',0.07],['plate',0.42,0.08,0.44,0,0.2,0.42,'plate',0.03,{rot:[0.55,0,0]}],['plate',0.4,0.06,0.34,0,-0.1,0.6,'plate2',0.02,{rot:[-0.5,0,0]}],['plate',0.4,0.05,0.5,0,0.3,0.3,'plate2'],['box',0.012,0.03,0.4,-0.233,0.18,0.3,'glow'],['box',0.012,0.03,0.4,0.233,0.18,0.3,'glow']];
+    for(const s of [-1,1]){ p.push(['cyl',0.16,0.16,0.06,s*0.25,0,0.3,'plate2','x',10]); p.push(['cyl',0.05,0.05,0.09,s*0.25,0,0.3,'glow','x',10]); p.push(['spr',0.3,s*0.3,0,0.3]);
+      for(let i=0;i<8;i++){ const a=i/8*PI*2; p.push(['plate',0.05,0.05,0.05,s*0.25,Math.cos(a)*0.17,0.3+Math.sin(a)*0.17,'plate2']); } } // the hip gear's teeth
     return p; })()},
  {n:'tail',p:'croup',at:[0,0.22,0.6],rot:[-0.5,0,0],mass:3,c:[0,0,0.3],r:0.14,pri:14,hp:1, hit:[[0.1,0.12,0.6,0,0,0.3]],
-  pieces:[['box',0.08,0.1,0.6,0,0,0.3,'mane'],['box',0.05,0.06,0.5,-0.05,-0.03,0.36,'mane'],['box',0.05,0.06,0.5,0.05,-0.03,0.36,'mane'],['box',0.04,0.05,0.3,0,-0.08,0.5,'mane']]},
+  pieces:[['box',0.06,0.07,0.6,0,0,0.3,'mane'],['box',0.035,0.05,0.5,-0.045,-0.03,0.36,'mane'],['box',0.035,0.05,0.5,0.045,-0.03,0.36,'mane'],['box',0.03,0.04,0.4,-0.02,-0.07,0.48,'mane'],['box',0.03,0.04,0.4,0.02,-0.07,0.48,'mane'],['box',0.025,0.035,0.3,0,-0.1,0.58,'mane']]},
  {n:'neck1',p:'barrel',at:[0,0.28,-0.5],rot:[0.55,0,0],mass:26,c:[0,0.1,-0.2],r:0.24,pri:5,hp:1, hit:[[0.3,0.36,0.42,0,0.1,-0.2]],
-  pieces:[['box',0.3,0.36,0.42,0,0.1,-0.2,'under'],['box',0.32,0.2,0.3,0,0.14,-0.22,'plate'],['box',0.012,0.26,0.03,-0.162,0.1,-0.2,'glow'],['box',0.012,0.26,0.03,0.162,0.1,-0.2,'glow'],
-          ['box',0.06,0.16,0.14,0,0.3,-0.12,'mane'],['box',0.06,0.16,0.14,0,0.32,-0.26,'mane'],['box',0.05,0.14,0.12,0,0.28,0.0,'mane']]},
+  pieces:[['box',0.3,0.36,0.42,0,0.1,-0.2,'under'],['plate',0.32,0.22,0.34,0,0.14,-0.22,'plate',0.04],['plate',0.03,0.3,0.36,-0.16,0.02,-0.2,'plate2',0.01],['plate',0.03,0.3,0.36,0.16,0.02,-0.2,'plate2',0.01],['box',0.012,0.26,0.03,-0.162,0.1,-0.2,'glow'],['box',0.012,0.26,0.03,0.162,0.1,-0.2,'glow'],
+          ['box',0.035,0.14,0.08,0,0.3,-0.06,'mane'],['box',0.035,0.16,0.08,0,0.32,-0.16,'mane'],['box',0.035,0.16,0.08,0,0.33,-0.26,'mane'],['box',0.035,0.14,0.08,0,0.31,-0.36,'mane'],['box',0.035,0.12,0.08,0,0.27,0.04,'mane']]},
  {n:'neck2',p:'neck1',at:[0,0.22,-0.4],rot:[0.25,0,0],mass:18,c:[0,0.08,-0.2],r:0.22,pri:4,hp:1, hit:[[0.27,0.32,0.4,0,0.08,-0.2]],
-  pieces:[['box',0.27,0.32,0.4,0,0.08,-0.2,'under'],['box',0.29,0.18,0.28,0,0.12,-0.2,'plate'],['box',0.012,0.22,0.03,-0.147,0.08,-0.2,'glow'],['box',0.012,0.22,0.03,0.147,0.08,-0.2,'glow'],
-          ['box',0.06,0.16,0.14,0,0.26,-0.14,'mane'],['box',0.05,0.14,0.12,0,0.26,-0.3,'mane']]},
+  pieces:[['box',0.27,0.32,0.4,0,0.08,-0.2,'under'],['plate',0.29,0.2,0.3,0,0.12,-0.2,'plate',0.04],['plate',0.03,0.26,0.32,-0.145,0.02,-0.2,'plate2',0.01],['plate',0.03,0.26,0.32,0.145,0.02,-0.2,'plate2',0.01],['box',0.012,0.22,0.03,-0.147,0.08,-0.2,'glow'],['box',0.012,0.22,0.03,0.147,0.08,-0.2,'glow'],
+          ['box',0.035,0.15,0.08,0,0.27,-0.08,'mane'],['box',0.035,0.15,0.08,0,0.28,-0.18,'mane'],['box',0.035,0.14,0.08,0,0.27,-0.28,'mane'],['box',0.035,0.12,0.08,0,0.24,-0.36,'mane']]},
  {n:'skull',p:'neck2',at:[0,0.18,-0.38],rot:[-0.85,0,0],mass:12,c:[0,0,-0.22],r:0.28,pri:3,hp:1,
   hit:[[0.25,0.28,0.5,0,-0.02,-0.22],[0.06,0.14,0.06,-0.08,0.18,-0.1],[0.06,0.14,0.06,0.08,0.18,-0.1]],
-  pieces:[['box',0.25,0.28,0.5,0,-0.02,-0.22,'plate'],['box',0.2,0.18,0.2,0,-0.08,-0.5,'under'],['box',0.27,0.04,0.44,0,0.1,-0.2,'plate2'],
-          ['box',0.06,0.14,0.06,-0.08,0.18,-0.1,'plate2'],['box',0.06,0.14,0.06,0.08,0.18,-0.1,'plate2'],
+  pieces:[['plate',0.25,0.28,0.5,0,-0.02,-0.22,'plate',0.04],['box',0.2,0.18,0.2,0,-0.08,-0.5,'under'],['plate',0.27,0.04,0.44,0,0.1,-0.2,'plate2'],
+          ['plate',0.06,0.14,0.06,-0.08,0.18,-0.1,'plate2'],['plate',0.06,0.14,0.06,0.08,0.18,-0.1,'plate2'],
           ['cyl',0.06,0.06,0.03,0,0.12,-0.26,'plate2','y',12],['cyl',0.04,0.04,0.045,0,0.12,-0.26,'eye','y',12], // the forehead lens
-          ['sph',0.045,-0.125,0.03,-0.3,'eye'],['sph',0.045,0.125,0.03,-0.3,'eye'],
+          ['sph',0.045,-0.125,0.03,-0.3,'eye'],['sph',0.045,0.125,0.03,-0.3,'eye'],['spr',0.22,-0.14,0.03,-0.31],['spr',0.22,0.14,0.03,-0.31],['spr',0.2,0,0.12,-0.29],['box',0.27,0.03,0.03,0,0.05,-0.3,'strap'],['box',0.03,0.03,0.4,-0.13,-0.02,-0.22,'strap'],['box',0.03,0.03,0.4,0.13,-0.02,-0.22,'strap'],['riv',-0.135,0.05,-0.3],['riv',0.135,0.05,-0.3],
           ['box',0.24,0.025,0.22,0,0.0,-0.42,'under'],['box',0.012,0.03,0.3,-0.126,-0.06,-0.25,'glow'],['box',0.012,0.03,0.3,0.126,-0.06,-0.25,'glow']]},
 ];
 for(const [L,side,par,at] of [['FL',-1,'barrel',[-0.17,-0.3,-0.42]],['FR',1,'barrel',[0.17,-0.3,-0.42]],['BL',-1,'croup',[-0.17,-0.32,0]],['BR',1,'croup',[0.17,-0.32,0]]]){
   const back=L[0]==='B', w=back?0.14:0.13, d=back?0.15:0.14;
   HORSE.push({n:'upper'+L,p:par,at,rot:[0,0,0],mass:back?20:18,c:[0,-0.22,0],r:0.17,pri:9,hp:1,leg:L, hit:[[w,0.45,d,0,-0.22,0]],
-    pieces:[['box',w,0.45,d,0,-0.22,0,'plate'],['cyl',0.1,0.1,0.17,0,0,0,'plate2','x',12],['cyl',0.04,0.04,0.19,0,0,0,'glow','x',10],
-            ['cyl',0.022,0.022,0.3,side*0.085,-0.2,0.07,'chrome','y',8],['box',0.012,0.3,0.02,-side*0.07,-0.22,-0.075,'glow']]});
+    pieces:[['plate',w,0.45,d,0,-0.22,0,'plate'],['cyl',0.1,0.1,0.17,0,0,0,'plate2','x',12],['cyl',0.04,0.04,0.19,0,0,0,'glow','x',10],['spr',0.2,side*0.1,0,0],
+            ['cyl',0.022,0.022,0.3,side*0.085,-0.2,0.07,'chrome','y',8],['cyl',0.03,0.03,0.08,side*0.085,-0.06,0.07,'chrome','y',8],['box',0.012,0.3,0.02,-side*0.07,-0.22,-0.075,'glow']]});
   HORSE.push({n:'lower'+L,p:'upper'+L,at:[0,-0.44,0],rot:[0,0,0],mass:8,c:[0,-0.24,0],r:0.15,pri:8,hp:1,leg:L, hit:[[0.11,0.44,0.12,0,-0.22,0],[0.13,0.08,0.15,0,-0.46,0]],
-    pieces:[['box',0.11,0.44,0.12,0,-0.22,0,'plate'],['cyl',0.08,0.08,0.14,0,0,0,'plate2','x',12],['cyl',0.03,0.03,0.16,0,0,0,'glow','x',10],
-            ['box',0.12,0.05,0.13,0,-0.3,0,'glow'],['box',0.12,0.05,0.13,0,-0.38,0,'plate2'],['box',0.13,0.08,0.15,0,-0.46,0,'boot']]});
+    pieces:[['plate',0.11,0.44,0.12,0,-0.22,0,'plate'],['cyl',0.08,0.08,0.14,0,0,0,'plate2','x',12],['cyl',0.03,0.03,0.16,0,0,0,'glow','x',10],
+            ['box',0.12,0.05,0.13,0,-0.3,0,'glow'],['plate',0.12,0.05,0.13,0,-0.38,0,'plate2'],['box',0.13,0.08,0.15,0,-0.46,0,'boot']]});
 }
 
 // ---- the rider: goggles, bandana, poncho with fringe, quiver, gloves. Pivots as RIDER_RIG. ----
 const RIDER=[
  {n:'pelvis',p:'barrel',at:[0,0.42,0.05],rot:[0,0,0],mass:14,c:[0,0.1,0],r:0.2,pri:10,hp:1, hit:[[0.36,0.2,0.3,0,0.1,0]],
-  pieces:[['box',0.36,0.2,0.3,0,0.1,0,'coat'],['box',0.37,0.05,0.31,0,0.17,0,'glove']]},
+  pieces:[['box',0.36,0.2,0.3,0,0.1,0,'coat'],['box',0.37,0.05,0.31,0,0.17,0,'strap'],['box',0.05,0.06,0.02,0,0.17,-0.16,'chrome']]},
  {n:'torso',p:'pelvis',at:[0,0.2,0],rot:[0,0,0],mass:30,c:[0,0.3,0],r:0.4,pri:11,hp:2, hit:[[0.6,0.6,0.44,0,0.3,0]],
-  pieces:(function(){ const p=[['box',0.6,0.6,0.44,0,0.3,0,'poncho']];
+  pieces:(function(){ const p=[['box',0.6,0.6,0.44,0,0.3,0,'poncho'],['box',0.66,0.16,0.5,0,0.04,0,'poncho'],['sph',0.07,-0.3,0.5,0,'poncho'],['sph',0.07,0.3,0.5,0,'poncho']];
     for(let x=-0.27;x<=0.271;x+=0.06){ p.push(['box',0.035,0.1,0.015,x,-0.05,-0.22,'band']); p.push(['box',0.035,0.1,0.015,x,-0.05,0.22,'band']); }
     for(let z=-0.2;z<=0.201;z+=0.08){ p.push(['box',0.015,0.1,0.035,-0.3,-0.05,z,'band']); p.push(['box',0.015,0.1,0.035,0.3,-0.05,z,'band']); }
     p.push(['box',0.08,0.62,0.03,0.12,0.3,-0.225,'glove']); // bandolier strap across the chest
@@ -145,39 +193,50 @@ const RIDER=[
  {n:'head',p:'neck',at:[0,0.12,0],rot:[0,0,0],mass:5,c:[0,0.1,0],r:0.16,pri:1,hp:1, hit:[[0.24,0.26,0.24,0,0.1,0],[0.28,0.15,0.28,0,0.04,0]],
   pieces:[['box',0.24,0.26,0.24,0,0.1,0,'void'],['box',0.28,0.15,0.28,0,0.04,0,'bandana'],['box',0.1,0.18,0.06,0,-0.05,0.14,'bandana'],
           ['box',0.26,0.05,0.26,0,0.15,0,'glove'],
-          ['cyl',0.06,0.06,0.035,-0.065,0.15,-0.125,'plate2','z',12],['cyl',0.06,0.06,0.035,0.065,0.15,-0.125,'plate2','z',12],
-          ['cyl',0.045,0.045,0.04,-0.065,0.15,-0.13,'eye','z',12],['cyl',0.045,0.045,0.04,0.065,0.15,-0.13,'eye','z',12]]},
+          ['cyl',0.06,0.06,0.035,-0.065,0.11,-0.125,'plate2','z',12],['cyl',0.06,0.06,0.035,0.065,0.11,-0.125,'plate2','z',12],['box',0.04,0.03,0.03,0,0.11,-0.13,'plate2'],
+          ['cyl',0.045,0.045,0.04,-0.065,0.11,-0.13,'eye','z',12],['cyl',0.045,0.045,0.04,0.065,0.11,-0.13,'eye','z',12],['spr',0.14,-0.065,0.11,-0.15],['spr',0.14,0.065,0.11,-0.15],['box',0.26,0.04,0.26,0,0.11,0,'strap'],['box',0.08,0.08,0.05,0,0.0,0.15,'bandana']]},
  {n:'hat',p:'head',at:[0,0.22,0],rot:[-0.3,0,0],mass:0.5,c:[0,0.12,0],r:0.14,pri:0,hp:1, hit:[[0.4,0.28,0.4,0,0.18,0]],
-  pieces:[['cyl',0.46,0.46,0.04,0,0,0,'hat','y',14],['cyl',0.2,0.24,0.3,0,0.17,0,'hat','y',12],['cyl',0.245,0.245,0.06,0,0.06,0,'band','y',12]]},
+  pieces:[['cyl',0.34,0.34,0.035,0,0,0,'hat','y',16],['cyl',0.19,0.225,0.27,0,0.15,0,'hat','y',14],['cyl',0.232,0.232,0.055,0,0.05,0,'band','y',14],['box',0.07,0.03,0.18,0,0.29,0,'void'],['box',0.08,0.03,0.2,-0.3,0.025,0,'hat',{rot:[0,0,0.35]}],['box',0.08,0.03,0.2,0.3,0.025,0,'hat',{rot:[0,0,-0.35]}]]},
  {n:'upperArmL',p:'torso',at:[-0.3,0.5,0],rot:[-1.3,0,0.3],mass:4,c:[0,-0.15,0],r:0.12,pri:6,hp:1,arm:true, hit:[[0.1,0.3,0.1,0,-0.15,0]],
   pieces:[['box',0.1,0.3,0.1,0,-0.15,0,'poncho']]},
  {n:'lowerArmL',p:'upperArmL',at:[0,-0.3,0],rot:[0.2,0,0],mass:3,c:[0,-0.15,0],r:0.11,pri:6,hp:1,arm:true,bow:true, hit:[[0.09,0.3,0.09,0,-0.15,0]],
-  pieces:[['box',0.09,0.3,0.09,0,-0.15,0,'coat'],['box',0.1,0.08,0.1,0,-0.3,0,'glove'],['box',0.105,0.03,0.105,0,-0.25,0,'glow']]},
+  pieces:[['sph',0.058,0,0,0,'coat'],['box',0.09,0.3,0.09,0,-0.15,0,'coat'],['box',0.1,0.08,0.1,0,-0.3,0,'glove'],['box',0.105,0.03,0.105,0,-0.25,0,'glow'],['box',0.03,0.06,0.025,-0.03,-0.36,-0.03,'glove'],['box',0.03,0.06,0.025,0.0,-0.36,-0.045,'glove'],['box',0.03,0.06,0.025,0.03,-0.36,-0.03,'glove']]},
  {n:'upperArmR',p:'torso',at:[0.3,0.5,0],rot:[-1.0,0,-0.7],mass:4,c:[0,-0.15,0],r:0.12,pri:6,hp:1,arm:true, hit:[[0.1,0.3,0.1,0,-0.15,0]],
   pieces:[['box',0.1,0.3,0.1,0,-0.15,0,'poncho']]},
  {n:'lowerArmR',p:'upperArmR',at:[0,-0.3,0],rot:[-1.2,0,0],mass:3,c:[0,-0.15,0],r:0.11,pri:6,hp:1,arm:true, hit:[[0.09,0.3,0.09,0,-0.15,0]],
-  pieces:[['box',0.09,0.3,0.09,0,-0.15,0,'coat'],['box',0.1,0.08,0.1,0,-0.3,0,'glove'],['box',0.105,0.03,0.105,0,-0.25,0,'glow']]},
+  pieces:[['sph',0.058,0,0,0,'coat'],['box',0.09,0.3,0.09,0,-0.15,0,'coat'],['box',0.1,0.08,0.1,0,-0.3,0,'glove'],['box',0.105,0.03,0.105,0,-0.25,0,'glow']]},
  {n:'upperLegL',p:'pelvis',at:[-0.18,0,0],rot:[-1.2,0,0.3],mass:10,c:[0,-0.2,0],r:0.14,pri:7,hp:1,rleg:true, hit:[[0.13,0.4,0.13,0,-0.2,0]],
-  pieces:[['box',0.13,0.4,0.13,0,-0.2,0,'coat']]},
+  pieces:[['sph',0.085,0,0,0,'coat'],['box',0.13,0.4,0.13,0,-0.2,0,'coat']]},
  {n:'lowerLegL',p:'upperLegL',at:[0,-0.4,0],rot:[1.5,0,0],mass:5,c:[0,-0.2,0],r:0.12,pri:7,hp:1,rleg:true, hit:[[0.11,0.4,0.11,0,-0.2,0],[0.12,0.1,0.2,0,-0.42,-0.03]],
-  pieces:[['box',0.11,0.4,0.11,0,-0.2,0,'coat'],['box',0.115,0.05,0.115,0,-0.3,0,'glow'],['box',0.12,0.1,0.2,0,-0.42,-0.03,'boot']]},
+  pieces:[['sph',0.072,0,0,0,'coat'],['box',0.11,0.4,0.11,0,-0.2,0,'coat'],['box',0.115,0.05,0.115,0,-0.3,0,'glow'],['box',0.12,0.1,0.2,0,-0.42,-0.03,'boot'],['cyl',0.025,0.025,0.02,0,-0.42,0.08,'chrome','z',6]]},
  {n:'upperLegR',p:'pelvis',at:[0.18,0,0],rot:[-1.2,0,-0.3],mass:10,c:[0,-0.2,0],r:0.14,pri:7,hp:1,rleg:true, hit:[[0.13,0.4,0.13,0,-0.2,0]],
-  pieces:[['box',0.13,0.4,0.13,0,-0.2,0,'coat']]},
+  pieces:[['sph',0.085,0,0,0,'coat'],['box',0.13,0.4,0.13,0,-0.2,0,'coat']]},
  {n:'lowerLegR',p:'upperLegR',at:[0,-0.4,0],rot:[1.5,0,0],mass:5,c:[0,-0.2,0],r:0.12,pri:7,hp:1,rleg:true, hit:[[0.11,0.4,0.11,0,-0.2,0],[0.12,0.1,0.2,0,-0.42,-0.03]],
-  pieces:[['box',0.11,0.4,0.11,0,-0.2,0,'coat'],['box',0.115,0.05,0.115,0,-0.3,0,'glow'],['box',0.12,0.1,0.2,0,-0.42,-0.03,'boot']]},
+  pieces:[['sph',0.072,0,0,0,'coat'],['box',0.11,0.4,0.11,0,-0.2,0,'coat'],['box',0.115,0.05,0.115,0,-0.3,0,'glow'],['box',0.12,0.1,0.2,0,-0.42,-0.03,'boot'],['cyl',0.025,0.025,0.02,0,-0.42,0.08,'chrome','z',6]]},
 ];
 const GALLOP={FL:0.5,FR:0.62,BL:0.0,BR:0.12};
 
 function addPiece(THREE,M,g,pc){
-  let geo, m;
+  let geo, m, matName=pc[7]; const extra=typeof pc[pc.length-1]==='object'&&!Array.isArray(pc[pc.length-1])?pc[pc.length-1]:null;
   if(pc[0]==='box'){ geo=new THREE.BoxGeometry(pc[1],pc[2],pc[3]); m=new THREE.Mesh(geo,M[pc[7]]); m.position.set(pc[4],pc[5],pc[6]); }
+  else if(pc[0]==='plate'){ geo=plateGeo(THREE,pc[1],pc[2],pc[3],pc[8]||0.014); m=new THREE.Mesh(geo,M[pc[7]]); m.position.set(pc[4],pc[5],pc[6]); }
   else if(pc[0]==='cyl'){ geo=new THREE.CylinderGeometry(pc[1],pc[2],pc[3],pc[9]||12); m=new THREE.Mesh(geo,M[pc[7]]); m.position.set(pc[4],pc[5],pc[6]);
     if(pc[8]==='x') m.rotation.z=PI/2; else if(pc[8]==='z') m.rotation.x=PI/2; }
-  else if(pc[0]==='sph'){ geo=new THREE.SphereGeometry(pc[1],10,8); m=new THREE.Mesh(geo,M[pc[5]]); m.position.set(pc[2],pc[3],pc[4]); }
-  else if(pc[0]==='torus'){ geo=new THREE.TorusGeometry(pc[1],pc[2],6,16,pc[7]||PI*2); m=new THREE.Mesh(geo,M[pc[6]]); m.position.set(pc[3],pc[4],pc[5]); }
-  if(!M[pc[0]==='sph'?pc[5]:pc[0]==='torus'?pc[6]:pc[7]]) throw new Error('no material '+(pc[0]==='sph'?pc[5]:pc[0]==='torus'?pc[6]:pc[7]));
+  else if(pc[0]==='sph'){ geo=new THREE.SphereGeometry(pc[1],10,8); m=new THREE.Mesh(geo,M[pc[5]]); m.position.set(pc[2],pc[3],pc[4]); matName=pc[5]; }
+  else if(pc[0]==='riv'){ geo=_geoCache.riv||(_geoCache.riv=new THREE.SphereGeometry(0.013,6,5)); m=new THREE.Mesh(geo,M.chrome); m.position.set(pc[1],pc[2],pc[3]); matName='chrome'; }
+  else if(pc[0]==='spr'){ m=new THREE.Sprite(M.spr); m.scale.set(pc[1],pc[1],1); m.position.set(pc[2],pc[3],pc[4]); m.userData.glow=true; g.add(m); return m; }
+  else if(pc[0]==='torus'){ geo=new THREE.TorusGeometry(pc[1],pc[2],6,16,pc[7]||PI*2); m=new THREE.Mesh(geo,M[pc[6]]); m.position.set(pc[3],pc[4],pc[5]); matName=pc[6]; }
+  if(!M[matName]) throw new Error('no material '+matName);
+  m.castShadow=true; m.receiveShadow=matName!=='glow'&&matName!=='eye';
+  if(extra&&extra.rot){ m.rotation.x+=extra.rot[0]; m.rotation.y+=extra.rot[1]; m.rotation.z+=extra.rot[2]; }
   g.add(m); return m;
 }
+// rivets at the four corners of a plate's outward face (x side when it is thin in x, else the +y / -z face given)
+function rivets(w,h,d,x,y,z,face){ const out=[]; const e=0.02;
+  if(face==='x'){ const sx=x>0?1:-1; for(const [yy,zz] of [[h/2-e*2,d/2-e*2],[h/2-e*2,-d/2+e*2],[-h/2+e*2,d/2-e*2],[-h/2+e*2,-d/2+e*2]]) out.push(['riv',x+sx*(w/2),y+yy,z+zz]); }
+  else if(face==='y'){ for(const [xx,zz] of [[w/2-e*2,d/2-e*2],[w/2-e*2,-d/2+e*2],[-w/2+e*2,d/2-e*2],[-w/2+e*2,-d/2+e*2]]) out.push(['riv',x+xx,y+h/2,z+zz]); }
+  else { const sz=z<0?-1:1; for(const [xx,yy] of [[w/2-e*2,h/2-e*2],[w/2-e*2,-h/2+e*2],[-w/2+e*2,h/2-e*2],[-w/2+e*2,-h/2+e*2]]) out.push(['riv',x+xx,y+yy,z+sz*(d/2)]); }
+  return out; }
 function buildRig(THREE,M,defs,parts){
   for(const d of defs){
     const g=new THREE.Group(); g.position.set(d.at[0],d.at[1],d.at[2]); g.rotation.set(d.rot[0],d.rot[1],d.rot[2]);
@@ -189,22 +248,23 @@ function buildRig(THREE,M,defs,parts){
 // the bow in the left hand: a recurve (violet frame) or a compound with cams and cables (gold frame)
 function buildBow(THREE,M,skin,bowG){
   if(skin.bow==='compound'){
-    addPiece(THREE,M,bowG,['box',0.07,0.1,0.26,0,0,-0.1,'bow']); // riser
-    for(const s of [-1,1]){ const limb=addPiece(THREE,M,bowG,['box',0.05,0.02,0.36,s*0.24,0,-0.28,'bow']); limb.rotation.y=-s*0.45;
-      addPiece(THREE,M,bowG,['cyl',0.085,0.085,0.025,s*0.44,0,-0.2,'plate2','y',12]); addPiece(THREE,M,bowG,['cyl',0.03,0.03,0.035,s*0.44,0,-0.2,'glow','y',10]); // the cams
-      addPiece(THREE,M,bowG,['box',0.012,0.012,0.08,s*0.3,0,-0.3,'glow']); }
-    const s1=addPiece(THREE,M,bowG,['cyl',0.004,0.004,0.9,0,0,-0.12,'string','y',3]); s1.rotation.x=PI/2;
-    for(const s of [-1,1]){ const c=addPiece(THREE,M,bowG,['cyl',0.003,0.003,0.46,s*0.22,0.02,-0.2,'string','y',3]); c.rotation.x=PI/2; c.rotation.z=s*0.05; }
+    addPiece(THREE,M,bowG,['plate',0.3,0.06,0.09,0,0,-0.03,'bow',0.012]);                       // riser, along the bow's height (x)
+    addPiece(THREE,M,bowG,['box',0.08,0.04,0.06,0,0,0.02,'glove']);                             // the grip
+    for(const s of [-1,1]){ const limb=addPiece(THREE,M,bowG,['plate',0.34,0.02,0.05,s*0.3,0,-0.09,'bow',0.006]); limb.rotation.y=s*0.3;
+      addPiece(THREE,M,bowG,['cyl',0.075,0.075,0.022,s*0.47,0,-0.14,'plate2','y',14]); addPiece(THREE,M,bowG,['cyl',0.028,0.028,0.03,s*0.47,0,-0.14,'glow','y',10]); // the cams
+      addPiece(THREE,M,bowG,['spr',0.14,s*0.47,0,-0.14]); addPiece(THREE,M,bowG,['box',0.09,0.012,0.012,s*0.2,0,-0.1,'glow']); }
+    const s1=addPiece(THREE,M,bowG,['cyl',0.004,0.004,0.94,0,0,0.02,'string','y',3]); s1.rotation.z=PI/2;   // the bowstring, cam to cam
+    for(const y of [-0.012,0.012]){ const c=addPiece(THREE,M,bowG,['cyl',0.003,0.003,0.9,0,y,-0.1,'string','y',3]); c.rotation.z=PI/2; } // the cables
   } else {
     const bow=addPiece(THREE,M,bowG,['torus',0.42,0.025,0,0,0,'bow',PI]); bow.rotation.set(PI/2,0,0);
-    addPiece(THREE,M,bowG,['box',0.06,0.12,0.05,0,0,-0.42,'glove']);
-    for(const s of [-1,1]){ const z=addPiece(THREE,M,bowG,['box',0.02,0.014,0.09,s*0.3,0,-0.29,'glow']); z.rotation.y=s*0.5; addPiece(THREE,M,bowG,['box',0.02,0.014,0.07,s*0.22,0,-0.34,'glow']); }
-    const str=addPiece(THREE,M,bowG,['cyl',0.004,0.004,0.84,0,0,0,'string','y',3]); str.rotation.x=PI/2;
+    addPiece(THREE,M,bowG,['box',0.08,0.05,0.07,0,0,-0.41,'glove']);
+    for(const s of [-1,1]){ const z=addPiece(THREE,M,bowG,['box',0.09,0.014,0.02,s*0.3,0,-0.29,'glow']); z.rotation.y=-s*0.5; addPiece(THREE,M,bowG,['box',0.07,0.014,0.02,s*0.22,0,-0.34,'glow']); }
+    const str=addPiece(THREE,M,bowG,['cyl',0.004,0.004,0.84,0,0,0,'string','y',3]); str.rotation.z=PI/2;
   }
 }
 // returns {root, horse, rider, parts, hat, cape, bow, animate, materials, skin}
 function build(THREE,opts){
-  opts=opts||{}; const skin=typeof opts.skin==='string'?SKINS[opts.skin]:(opts.skin||SKINS.goldLightning);
+  opts=opts||{}; let skin=typeof opts.skin==='string'?SKINS[opts.skin]:(opts.skin||SKINS.goldLightning); if(opts.srgb) skin=Object.assign({_srgb:true},skin);
   const M=opts.materials||makeMaterials(THREE,skin);
   const root=new THREE.Group(); const horse=new THREE.Group(); horse.position.y=1.15; root.add(horse);
   const parts={}; buildRig(THREE,M,HORSE,parts); horse.add(parts.barrel.g);
@@ -218,8 +278,9 @@ function build(THREE,opts){
       if(up.on) up.g.rotation.x=Math.sin(o)*(front?0.75:0.85)*a;
       if(lo.on){ const fold=Math.max(0,Math.sin(o+1.0))*a; lo.g.rotation.x=front?-fold*1.1:fold*0.9; } }
     horse.position.y=1.15+(0.09*Math.sin(2*ph+0.5)+0.04)*a; horse.rotation.x=0.07*Math.sin(ph+1.0)*a;
-    if(P.neck1.on) P.neck1.g.rotation.x=0.55+0.08*Math.sin(ph)*a; if(P.tail.on) P.tail.g.rotation.x=-0.5+0.25*Math.sin(ph*0.5)*a;
+    if(P.neck1.on) P.neck1.g.rotation.x=0.55+0.08*Math.sin(ph)*a; if(P.tail.on) P.tail.g.rotation.x=1.15-0.75*a+0.25*Math.sin(ph*0.5)*a;
     cape.rotation.x=1.35-Math.min(0.95,spd*0.045)+0.12*Math.sin((time||0)*7+ph)+0.06*Math.sin((time||0)*11.3);
+    const pulse=0.8+0.25*Math.sin((time||0)*5.5)+0.08*Math.sin((time||0)*17); M.glow.emissiveIntensity=pulse; M.spr.opacity=0.35+0.25*pulse;
   }
   return {root,horse,rider:parts.pelvis.g,parts,hat:parts.hat.g,cape,bow:bowG,animate,materials:M,skin};
 }
@@ -231,21 +292,23 @@ root.MachineRiders={SKINS,HORSE,RIDER,GALLOP,build,makeMaterials,ponchoTexture};
 'use strict';
 if(typeof THREE==='undefined'){ document.getElementById('err').style.display='grid'; return; }
 const PI=Math.PI, rand=(a,b)=>a+Math.random()*(b-a);
-const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); document.body.insertBefore(renderer.domElement,document.getElementById('ui'));
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.outputEncoding=THREE.sRGBEncoding; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.0; document.body.insertBefore(renderer.domElement,document.getElementById('ui'));
 const scene=new THREE.Scene();
-const camera=new THREE.PerspectiveCamera(42,1,0.1,200);
-scene.add(new THREE.HemisphereLight(0xcfe3ff,0x6a4a10,0.95));
-const sun=new THREE.DirectionalLight(0xfff1d0,0.9); sun.position.set(4,8,3); scene.add(sun);
+const camera=new THREE.PerspectiveCamera(38,1,0.1,200);
+scene.add(new THREE.HemisphereLight(0xcfe3ff,0x7a5410,0.5));
+const sun=new THREE.DirectionalLight(0xfff0d2,1.1); sun.position.set(4,7,3); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.near=1; sun.shadow.camera.far=30; sun.shadow.camera.left=sun.shadow.camera.bottom=-4; sun.shadow.camera.right=sun.shadow.camera.top=4; sun.shadow.bias=-0.0008; sun.shadow.normalBias=0.02; scene.add(sun);
+const fill=new THREE.DirectionalLight(0x9fc4ff,0.35); fill.position.set(-5,3,-2); scene.add(fill);
+const rim=new THREE.DirectionalLight(0xffe2a8,0.6); rim.position.set(-2,4,-6); scene.add(rim);
 // the ground of the frame: flat gold, a few rocks, a cactus
-const ground=new THREE.Mesh(new THREE.CircleGeometry(14,40),new THREE.MeshLambertMaterial({color:0xe9a62a})); ground.rotation.x=-PI/2; scene.add(ground);
-const rockM=new THREE.MeshLambertMaterial({color:0xc27a2a,flatShading:true});
-for(let i=0;i<9;i++){ const r=new THREE.Mesh(new THREE.DodecahedronGeometry(rand(0.12,0.3),0),rockM); const a=rand(0,PI*2), d=rand(2.2,6); r.position.set(Math.cos(a)*d,0.08,Math.sin(a)*d); r.rotation.set(rand(0,3),rand(0,3),0); scene.add(r); }
-const cacM=new THREE.MeshLambertMaterial({color:0x5fbf4a});
+const ground=new THREE.Mesh(new THREE.CircleGeometry(14,40),new THREE.MeshLambertMaterial({color:new THREE.Color(0xe9a62a).convertSRGBToLinear()})); ground.rotation.x=-PI/2; ground.receiveShadow=true; scene.add(ground);
+const rockM=new THREE.MeshLambertMaterial({color:new THREE.Color(0xc27a2a).convertSRGBToLinear()});
+for(let i=0;i<9;i++){ const r=new THREE.Mesh(new THREE.DodecahedronGeometry(rand(0.12,0.3),0),rockM); const a=rand(0,PI*2), d=rand(2.2,6); r.position.set(Math.cos(a)*d,0.08,Math.sin(a)*d); r.rotation.set(rand(0,3),rand(0,3),0); r.castShadow=true; scene.add(r); }
+const cacM=new THREE.MeshLambertMaterial({color:new THREE.Color(0x5fbf4a).convertSRGBToLinear()});
 const cac=new THREE.Group(); cac.position.set(3.6,0,-2.4); scene.add(cac);
-for(const [x,y,h] of [[0,0.9,1.8],[-0.32,1.0,0.7],[0.32,1.2,0.6]]){ const m=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.14,h,8),cacM); m.position.set(x,y,0); cac.add(m); }
+for(const [x,y,h] of [[0,0.9,1.8],[-0.32,1.0,0.7],[0.32,1.2,0.6]]){ const m=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.14,h,8),cacM); m.position.set(x,y,0); m.castShadow=true; cac.add(m); }
 for(const x of [-0.32,0.32]){ const m=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,0.4,8),cacM); m.rotation.z=PI/2; m.position.set(x/2,0.8+(x>0?0.3:0),0); cac.add(m); }
 
-let skin='goldLightning'; let rider=MachineRiders.build(THREE,{skin}); scene.add(rider.root);
+let skin='goldLightning'; let rider=MachineRiders.build(THREE,{skin,srgb:true}); scene.add(rider.root);
 for(const [id,k] of [['sGold','goldLightning'],['sViolet','violetChevron']]) document.getElementById(id).addEventListener('click',()=>{ skin=k; document.getElementById('sGold').classList.toggle('on',k==='goldLightning'); document.getElementById('sViolet').classList.toggle('on',k==='violetChevron'); document.getElementById('bReset').click(); });
 const hitGroup=new THREE.Group(); scene.add(hitGroup); let showHit=false;
 const hitMat=new THREE.MeshBasicMaterial({color:0xb48cff,wireframe:true});
@@ -254,7 +317,7 @@ function rebuildHit(){ while(hitGroup.children.length) hitGroup.remove(hitGroup.
 function clearHit(){ for(const k in rider.parts){ const g=rider.parts[k].g; for(let i=g.children.length-1;i>=0;i--) if(g.children[i].userData.hit) g.remove(g.children[i]); } }
 
 // orbit: drag / wheel / pinch, turntable until you touch it
-let yaw=0.75, pitch=0.22, dist=5.2, auto=true, drag=null, pinch=null;
+let yaw=0.75, pitch=0.2, dist=6.4, auto=true, drag=null, pinch=null;
 const cv=renderer.domElement;
 cv.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY,id:e.pointerId}; auto=false; cv.setPointerCapture(e.pointerId); });
 cv.addEventListener('pointermove',e=>{ if(!drag||e.pointerId!==drag.id) return; yaw-=(e.clientX-drag.x)*0.008; pitch=Math.max(-0.3,Math.min(1.2,pitch+(e.clientY-drag.y)*0.006)); drag.x=e.clientX; drag.y=e.clientY; });
@@ -274,9 +337,9 @@ document.getElementById('bPop').addEventListener('click',()=>{ const live=Object
   scene.attach(part.g); const v=new THREE.Vector3(rand(-2,2),rand(3,5),rand(-2,2)); const sp=Math.min(3,40/part.def.mass)*4;
   ragdolls.push({obj:part.g,vel:v,ang:new THREE.Vector3(rand(-sp,sp),rand(-sp,sp)*0.4,rand(-sp,sp)),lie:Math.max(0.08,part.def.r*0.6)});
   // sparks from the stump: the machine bleeds light
-  for(let i=0;i<10;i++){ const s=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.05),new THREE.MeshBasicMaterial({color:0xc9a6ff})); part.g.getWorldPosition(s.position); scene.add(s); ragdolls.push({obj:s,vel:new THREE.Vector3(rand(-3,3),rand(1,5),rand(-3,3)),ang:new THREE.Vector3(9,9,9),lie:0.02,life:1.2}); }
+  for(let i=0;i<10;i++){ const s=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.05),new THREE.MeshBasicMaterial({color:rider.skin.eye})); part.g.getWorldPosition(s.position); scene.add(s); ragdolls.push({obj:s,vel:new THREE.Vector3(rand(-3,3),rand(1,5),rand(-3,3)),ang:new THREE.Vector3(9,9,9),lie:0.02,life:1.2}); }
   clearHit(); rebuildHit(); });
-document.getElementById('bReset').addEventListener('click',()=>{ scene.remove(rider.root); for(const g of ragdolls) scene.remove(g.obj); ragdolls.length=0; rider=MachineRiders.build(THREE,{skin}); scene.add(rider.root); clearHit(); rebuildHit(); });
+document.getElementById('bReset').addEventListener('click',()=>{ scene.remove(rider.root); for(const g of ragdolls) scene.remove(g.obj); ragdolls.length=0; rider=MachineRiders.build(THREE,{skin,srgb:true}); scene.add(rider.root); clearHit(); rebuildHit(); });
 
 function resize(){ const w=window.innerWidth,h=window.innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix(); }
 window.addEventListener('resize',resize); resize();
@@ -287,7 +350,7 @@ function frame(now){ requestAnimationFrame(frame); let dt=Math.min(0.05,(now-las
   for(let i=ragdolls.length-1;i>=0;i--){ const g=ragdolls[i], o=g.obj; g.vel.y-=12*dt; o.position.addScaledVector(g.vel,dt); o.rotation.x+=g.ang.x*dt; o.rotation.z+=g.ang.z*dt;
     if(o.position.y<g.lie){ o.position.y=g.lie; if(g.vel.y<-1.2){ g.vel.y*=-0.45; g.vel.x*=0.7; g.vel.z*=0.7; g.ang.multiplyScalar(0.6); } else { g.vel.set(0,0,0); g.ang.set(0,0,0); } }
     if(g.life!==undefined){ g.life-=dt; if(g.life<=0){ scene.remove(o); ragdolls.splice(i,1); } } }
-  const cy=1.35; camera.position.set(Math.sin(yaw)*Math.cos(pitch)*dist, cy+Math.sin(pitch)*dist, Math.cos(yaw)*Math.cos(pitch)*dist); camera.lookAt(0,cy,0);
+  const cy=window.__cy||1.5; camera.position.set(Math.sin(yaw)*Math.cos(pitch)*dist, cy+Math.sin(pitch)*dist, Math.cos(yaw)*Math.cos(pitch)*dist); camera.lookAt(0,cy,0);
   renderer.render(scene,camera);
 }
 requestAnimationFrame(frame);
