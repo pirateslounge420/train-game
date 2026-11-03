@@ -115,7 +115,7 @@ drawing.
 - **The steam surge** (§K). Standing on the tender, press **Q** or **F**
   (or the **Surge** button on a phone). Each surge adds 26 m/s (58 mph) on
   top of the last, up to 200 mph, then bleeds back to cruising speed. Once
-  you're going 12 m/s faster than cruise, the riders fall back. You get
+  you're going about 12 m/s faster than cruise, the riders can't keep up. You get
   two a stretch, shown as dots on the stats line or the button, and each
   town restocks them.
 - **Bow and arrow** (design §B, §L, §U, ported from reference build 0.7).
@@ -137,7 +137,8 @@ drawing.
   - **Head or neck:** kill. The head flies off in a burst of chunks.
   - **Gut:** kill.
   - **Torso:** two hits knock him off.
-  - **Arm:** it flies off; he drops his bow and bolts.
+  - **Arm:** it flies off and he drops his bow, but he rides on. Take the
+    other arm too and he's dead.
   - **Leg:** it flies off; he slumps and falls about a second later.
   - **Hat:** the hardest shot. It spins off and he bolts.
   - **Horse's head or neck:** the horse goes down and throws him.
@@ -149,7 +150,8 @@ drawing.
   at a racked hat and Grab to wear it: a brim shows at the top of your view.
   Grab again to pull the arrow out of the hat you're wearing. Wearing
   another puts the first back on its peg.
-- **Riders on foot.** A man thrown whole gets up after a second or two, runs
+- **Riders on foot.** A man thrown whole at under 67 mph gets up after a
+  second or two (any faster and the fall kills him), runs
   at the train, fires two or three wild shots, then runs for it. Any hit
   finishes him. He only counts as downed if you finish him.
 - **Health.** You have a health bar at the bottom left. It refills very

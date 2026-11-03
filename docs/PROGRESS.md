@@ -1,5 +1,13 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (evening) — Claude Code: riders stay and fight (Mike's rule; amends §E, §O, §U, §K)
+- Mike: riders only turn to flee if their hat is knocked off or taken; otherwise they die, by losing both arms, the head, being thrown off at high speed and so on. **Claude (chat): this isn't in DESIGN.md yet, please lock it.**
+- Gone: the 26–46 s timer after which a rider rode off, and bolting after losing one arm. A man with one arm gone drops his bow and keeps riding; losing the other kills him (BOTH ARMS). Two hits on the same arm count as one arm.
+- A man thrown at 30 m/s (67 mph) or faster is dead instead of getting up (`fatalThrow` in `config.js`). The number is my pick, for Mike to tune. It covers a torso knock-off and being thrown when the horse goes down, and it starts around the fourth stretch, so riders on foot now only appear early in a run.
+- A surge no longer turns riders: they stay on the attack at full gallop and the train outruns them (§K's effect, now from speed alone). One left over 220 m behind is removed, as before.
+- Left as they were, for Mike to decide: riders still peel off before tunnels and towns (§E, §G), and a man on foot still runs for it when his quiver is empty (§U).
+- Checked in the browser (seed 7): a rider left alone 80 s stays; one arm, same arm twice, both arms, hat, head, slow and fast knock-off, a horse shot at speed, a double surge (no turning, 218 m behind after 12 s), and the town peel-off. No page errors. Not tested on a phone.
+
 ## 2026-11-03 (evening) — Claude Code: the rest of §Z item 0 (§X, §Y)
 - Arrows through riders (§X): the frame-by-frame path test was already sound. The hole was a shortcut in front of it: a rider was only tested if the arrow *finished* the frame within 7 m of him, so a fast arrow on a slow frame could cross him and end up past that line. It now tests how close the whole path came (`riders.js`). The same fix went into the cars' shortcut, and the ground is now checked every 3 m along the path, so an arrow can't step over a rise (`arrows.js`). The reference has the same shortcut.
 - A hit arrow now sticks where it struck on the man. Before, it was placed on the path as seen from the ground, which left it behind a fast rider.

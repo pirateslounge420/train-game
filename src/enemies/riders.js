@@ -236,7 +236,7 @@ export class Riders {
     const r = Object.assign(m, {
       side, pos, vel: new THREE.Vector3(), dx: 0, dz: 0,
       ox: rand(9, 23), oz: rand(-16, 12), swayT: rand(0, 100), phase: rand(0, TAU),
-      state: 'approach', hold: rand(26, 46), shootT: rand(2, 4.5), extra: rand(0, 3),
+      state: 'approach', shootT: rand(2, 4.5), extra: rand(0, 3),
       sigma: Math.max(1.4, 5.5 - ri * 0.6), // aim tightens by region (§E)
       alive: true, riderOn: true, yaw: 0, scared: false, armed: true, slumpT: 0,
     });
@@ -301,8 +301,9 @@ export class Riders {
         maxS = train.cruise + 9 + r.extra;
         _v.copy(_P).addScaledVector(_R, lat).addScaledVector(_F, lon);
         if (r.state === 'approach' && Math.abs(r.pos.x - _v.x) < 4 && Math.abs(r.pos.z - _v.z) < 6) r.state = 'hold';
-        r.hold -= dt;
-        if (r.hold <= 0 || !stay) r.state = 'flee';
+        // A man stays till he's dead or his hat's gone (Mike, 3 Nov). Only a
+        // tunnel or a town turns him away, and a surge just outruns him.
+        if (!stay) r.state = 'flee';
       } else if (r.state === 'flee') {
         lat = r.side * 95;
         lon = -40;
@@ -484,9 +485,9 @@ export class Riders {
       sound.hitFeedback('hit');
       this.detachPart(r, part, impulse, react);
       if (react.disarm) {
+        // One arm gone: no bow, but he rides on. Both gone: he's dead (Mike, 3 Nov).
         r.armed = false;
-        r.scared = true;
-        if (r.state !== 'riderless' && r.state !== 'dead') r.state = 'flee';
+        if (this.armsGone(r)) this.knockOff(r, impulse, 'BOTH ARMS', true);
       }
       if (react.slump && r.riderOn && r.slumpT <= 0) r.slumpT = 0.9;
       if (react.horse) this.downHorse(r, impulse, new THREE.Vector3(react.horse[0], react.horse[1], react.horse[2] * (r.side > 0 ? -1 : 1)));
@@ -522,7 +523,6 @@ export class Riders {
     r.parts.hat.on = false;
     r.scared = true;
     r.state = 'flee';
-    r.hold = 0;
     this.hatShots++;
     if (this.game.hats.fly(r.hat, r.gang.name)) return hud.hitFeedback('headshot', `NEW HAT: ${r.gang.name.toUpperCase()}`);
     hud.hitFeedback('headshot', 'HAT SHOT!');
@@ -617,6 +617,17 @@ export class Riders {
     return P.head.on && P.neck.on && P.pelvis.on && P.upperLegL.on && P.lowerLegL.on && P.upperLegR.on && P.lowerLegR.on;
   }
 
+  // Thrown at this speed, nobody gets up (Mike, 3 Nov).
+  tooFast(r) {
+    return Math.hypot(r.vel.x, r.vel.z) >= E.fatalThrow;
+  }
+
+  // Both arms gone: each is lost at the shoulder or the elbow.
+  armsGone(r) {
+    const P = r.parts;
+    return !(P.upperArmL.on && P.lowerArmL.on) && !(P.upperArmR.on && P.lowerArmR.on);
+  }
+
   knockOff(r, impulse, label, fatal) {
     if (!r.riderOn) return;
     r.riderOn = false;
@@ -625,8 +636,7 @@ export class Riders {
     v.y += rand(2, 4);
     const rag = this.toRagdoll(r.rider, v, 0.35);
     r.state = 'riderless';
-    r.hold = 99;
-    if (!fatal && this.canSurvive(r)) {
+    if (!fatal && this.canSurvive(r) && !this.tooFast(r)) {
       rag.recover = { r, t: rand(1.0, 2.0) };
       rag.life = 30;
       if (label) this.game.hud.hitFeedback('hit', label);
@@ -656,7 +666,7 @@ export class Riders {
     vh.y += spin ? 2.5 : 1.0;
     this.toRagdoll(r.horse, vh, 0.5, spin);
     r.riderOn = false;
-    if (this.canSurvive(r)) {
+    if (this.canSurvive(r) && !this.tooFast(r)) {
       rag.recover = { r, t: rand(1.4, 2.6) };
       rag.life = 30;
     } else this.kills++;

@@ -59,6 +59,7 @@ export const CONFIG = {
   // as in reference 0.7.
   enemies: {
     arrowSpeed: 50, // m/s
+    fatalThrow: 30, // m/s (67 mph): a man thrown from his horse at this speed is dead
   },
 
   damage: {

@@ -65,11 +65,11 @@ const game = {
     if (regionStart[train.nextTown] - s < 260 || s - regionStart[train.region] < 110) return false;
     return !tunnelNear(s + 300, 0) && !tunnelNear(s, 60);
   },
-  // ...and those already out peel off before a tunnel or a stop.
-  // A surge leaves them behind too, once the boost passes 12 m/s (§K).
+  // ...and those already out peel off before a tunnel or a stop. A surge
+  // doesn't turn them: they ride flat out and the train outruns them (§K).
   ridersMayStay() {
     const s = train.distance;
-    return train.state === 'run' && train.boost <= 12 && !tunnelNear(s + 140, 0) && !tunnelNear(s, 30);
+    return train.state === 'run' && !tunnelNear(s + 140, 0) && !tunnelNear(s, 30);
   },
 };
 
