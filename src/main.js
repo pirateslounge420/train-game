@@ -44,8 +44,8 @@ let dayT = START_TIME;
 
 // The engine's headlamp, lit at night (§R).
 const headlamp = new THREE.SpotLight(0xffe2a0, 0, 140, 0.32, 0.5, 1);
-headlamp.position.set(0, 4.47, -22.4);
-headlamp.target.position.set(0, 1.5, -90);
+headlamp.position.set(0, 4.75, -7.25 - 29.5);
+headlamp.target.position.set(0, 1.5, -90 - 29.5);
 train.loco.inner.add(headlamp, headlamp.target);
 
 const game = {
@@ -60,9 +60,10 @@ const game = {
     return !tunnelNear(s + 300, 0) && !tunnelNear(s, 60);
   },
   // ...and those already out peel off before a tunnel or a stop.
+  // A surge leaves them behind too, once the boost passes 12 m/s (§K).
   ridersMayStay() {
     const s = train.distance;
-    return train.state === 'run' && !tunnelNear(s + 140, 0) && !tunnelNear(s, 30);
+    return train.state === 'run' && train.boost <= 12 && !tunnelNear(s + 140, 0) && !tunnelNear(s, 30);
   },
 };
 
@@ -130,6 +131,17 @@ if (location.search.includes('debug')) {
   window.setTime = (h) => (dayT = (h / 24) * DAY_LEN);
 }
 
+// The steam surge (§K): fired from the tender, three a stretch.
+function surge() {
+  if (player.dead) return;
+  if (player.car.name !== 'tender') return hud.hint('Surge from the tender: forward along the roofs, two cars up');
+  const why = train.surge();
+  if (why) return hud.hint(why);
+  sound.horn();
+  hud.message(`STEAM SURGE ${3 - train.surges}/3`);
+  player.shake = Math.max(player.shake, 0.35);
+}
+
 function showDeath() {
   state = 'dead';
   input.active = false;
@@ -144,11 +156,13 @@ function showDeath() {
 let chuffAcc = 0;
 let clackAcc = 0;
 function trainSounds(dt) {
-  // Two chuffs per turn of the big driving wheels, a clack at each rail joint.
-  chuffAcc += (train.speed * dt) / (2 * Math.PI * 0.85);
-  if (chuffAcc >= 0.5) {
-    chuffAcc -= 0.5;
-    sound.chuff();
+  // The exhaust beat: four chuffs a turn of the drivers, thinning to a roar
+  // past 16 a second (§N). A clack at each rail joint.
+  const rate = (train.speed / (2 * Math.PI * 1.22)) * 4;
+  chuffAcc += rate * dt;
+  if (chuffAcc >= 1) {
+    chuffAcc -= Math.floor(chuffAcc);
+    if (rate < 16 || Math.random() < 16 / rate) sound.chuff(Math.min(1, Math.max(0.5, 0.5 + train.speed / 40)));
   }
   clackAcc += train.speed * dt;
   if (clackAcc >= 12) {
@@ -156,6 +170,8 @@ function trainSounds(dt) {
     sound.clack();
     setTimeout(() => sound.clack(), 100);
   }
+  // The firebox flickers.
+  train.firebox.emissiveIntensity = 0.9 + Math.sin(time * 13) * 0.12;
 }
 
 // ---- main loop ----------------------------------------------------------------
@@ -193,6 +209,7 @@ function update(dt) {
   game.bandits.update(dt);
   game.arrows.update(dt);
   if (input.take('grabReq')) game.arrows.grab(player, camera);
+  if (input.take('surgeReq')) surge();
   for (const t of input.takeTaps()) game.arrows.tapGrab(player, camera, t.x, t.y);
   smoke.update(dt, train);
   player.updateHealth(dt);

@@ -10,8 +10,8 @@ import {
 // pieces (bed, rails, ties, telegraph poles, towns and tunnels). Pieces are
 // built ahead of the train and thrown away behind it.
 
-export const RAIL_TOP = 0.5; // the train's wheels sit on this
-const BED_Y = 0.3;
+export const RAIL_TOP = 0.25; // the train's wheels sit on this (as in the reference)
+const BED_Y = 0.09;
 
 // Height of the ground anywhere. Flat by the line (that's where riders
 // gallop), hills further out, mountains over the tunnels.

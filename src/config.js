@@ -19,6 +19,7 @@ export const CONFIG = {
     // Walking, as in reference 0.7 (§C, §M).
     walkSpeed: 4.8, // m/s on a floor or deck
     roofSpeed: 4.1, // m/s up on a roof
+    tenderSpeed: 3.2, // m/s on the tender's coal
     roofHeight: 4.0, // feet above this (train space) count as "on a roof"
     drawSlow: 0.55, // walking speed while the bow is drawn
     sprintBoost: 1.45, // double-tap forward and hold
@@ -30,7 +31,7 @@ export const CONFIG = {
     radius: 0.25,
     height: 1.75,
     eyeHeight: 1.62,
-    stepHeight: 0.4,
+    stepHeight: 0.65, // steps up this high on their own (tender to hat car roof, §M)
     maxHealth: 100,
     regenPerSecond: 0.35, // very slow
     regenDelay: 4, // seconds after being hit before regen resumes

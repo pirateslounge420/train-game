@@ -9,8 +9,10 @@ export class Hud {
     this.healthFill = $('health-fill');
     this.arrowCount = $('arrow-count');
     this.stats = $('stats');
-    this.stats.innerHTML = '<span id="st-speed"></span> · <span id="st-dist"></span> · <span id="st-country"></span> · <span id="st-tod" title="tap: +3 hours"></span> · seed <span id="st-seed"></span> · downed <span id="st-down"></span>';
-    this.st = { speed: $('st-speed'), dist: $('st-dist'), country: $('st-country'), tod: $('st-tod'), seed: $('st-seed'), down: $('st-down') };
+    this.stats.innerHTML = '<span id="st-speed"></span> · <span id="st-dist"></span> · <span id="st-country"></span> · <span id="st-tod" title="tap: +3 hours"></span> · seed <span id="st-seed"></span> · downed <span id="st-down"></span> <span class="desktop-only">· surges <span id="st-surge"></span></span>';
+    this.st = { speed: $('st-speed'), dist: $('st-dist'), country: $('st-country'), tod: $('st-tod'), seed: $('st-seed'), down: $('st-down'), surge: $('st-surge') };
+    this.surgeBtn = $('surge');
+    this.surgeLbl = $('surgelbl');
     this.onTimeTap = null;
     this.st.tod.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -58,6 +60,11 @@ export class Hud {
     set(this.st.tod, `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`);
     set(this.st.seed, String(day.seed));
     set(this.st.down, String(game.bandits.downed));
+    const dots = '●'.repeat(t.surges) + '○'.repeat(Math.max(0, 3 - t.surges));
+    set(this.st.surge, dots);
+    set(this.surgeLbl, dots);
+    this.surgeBtn.classList.toggle('empty', t.surges <= 0);
+    this.surgeBtn.classList.toggle('on', p.car.name === 'tender' && t.surges > 0);
     if (this.bannerT > 0) {
       this.bannerT -= dt;
       if (this.bannerT <= 0) this.banner_.classList.remove('on');

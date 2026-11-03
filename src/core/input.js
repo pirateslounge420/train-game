@@ -26,6 +26,7 @@ export class Input {
     this.lastW = 0;
     this.jumpReq = false;
     this.grabReq = false;
+    this.surgeReq = false;
     this.cancelReq = false;
     this.taps = []; // screen points tapped this frame (to grab a stuck arrow)
 
@@ -41,6 +42,7 @@ export class Input {
         this.jumpReq = true;
       }
       if (e.code === 'KeyE') this.grabReq = true;
+      if ((e.code === 'KeyQ' || e.code === 'KeyF') && !e.repeat) this.surgeReq = true;
     });
     addEventListener('keyup', (e) => {
       this.keys.delete(e.code);
@@ -189,6 +191,10 @@ export class Input {
     $('jump').addEventListener('pointerdown', (e) => {
       e.preventDefault();
       this.jumpReq = true;
+    });
+    $('surge').addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      this.surgeReq = true;
     });
     $('grab').addEventListener('pointerdown', (e) => {
       e.preventDefault();

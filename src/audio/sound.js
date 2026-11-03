@@ -108,4 +108,11 @@ export class Sound {
     this.tone(587, 1.1, 0.06, 'triangle', 560);
     this.tone(740, 1.1, 0.05, 'triangle', 700);
   }
+  // The surge horn: two tones, low then high (§K).
+  horn() {
+    this.tone(220, 0.55, 0.09, 'sawtooth', 210);
+    this.tone(277, 0.55, 0.07, 'sawtooth', 266);
+    this.tone(330, 0.7, 0.08, 'sawtooth', 320, 0.45);
+    this.tone(415, 0.7, 0.06, 'sawtooth', 400, 0.45);
+  }
 }

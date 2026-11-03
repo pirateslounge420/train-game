@@ -95,16 +95,29 @@ drawing.
 - **The seed.** Every run's line, country and towns come from one number,
   shown on the stats line. Add `?seed=1234` to the address to ride the
   same line again.
-- **The train.** A steam locomotive with a cowcatcher, big box headlamp, brass
-  bands and domes, a balloon smokestack with smoke, a riveted cab, six
-  cylinders (three stacked on each side) and a steam-turbine casing along the
-  boiler. Connecting rods visibly drive the big red driving wheels. Behind it
-  are a coal tender, a boxcar and a flatcar.
-- **Riding on it.** You start on the flatcar at the back. Each car follows the
-  track on its own, so the train bends through curves. You can walk the
-  whole train, climb the ladders onto the boxcar roof, drop onto the coal
-  tender, get into the cab, and walk the running boards beside the boiler up
-  to the front. You move with the train. If you fall off, you die.
+- **The train** (design §D, §N, ported from reference build 0.7). From the
+  back: the **caboose** (your home car), the **hat car**, the **tender** and
+  the **locomotive**. The locomotive has eight-foot driving wheels, three a
+  side, with side rods and main rods that follow them, a boiler with brass
+  bands, a headlamp, and a cab open at the back with the firebox glowing.
+  Its exhaust beats four times a turn of the drivers, thinning to a roar at
+  speed, and its grey smoke streams back and fades.
+- **Riding on it.** You start on the caboose roof. Each car follows the
+  track on its own, so the train bends through curves. The caboose roof has
+  a low plank edge and a rail all round, with a gate at the front onto the
+  hat car's roof and a ladder at the back right down to the rear platform.
+  From the platform a door leads into the caboose (three open windows a
+  side), and its front door leads into the hat car. A ladder inside the hat
+  car, at the back left, goes up through a hatch to its roof. Forward from
+  the hat car's roof you step down onto the tender's coal, which is as far
+  forward as you can go. Rails and edges keep you aboard. You move with the
+  train.
+- **The steam surge** (§K). Standing on the tender, press **Q** or **F**
+  (or the **Surge** button on a phone). Each surge adds 26 m/s (58 mph) on
+  top of the last, up to 200 mph, then bleeds back to cruising speed. Once
+  you're going 12 m/s faster than cruise, the riders fall back. You get
+  three a stretch, shown as dots on the stats line or the button, and each
+  town restocks them.
 - **Bow and arrow** (design §B, §L, §U, ported from reference build 0.7).
   A snap shot leaves at 45 m/s (100 mph) and a full draw at 80 m/s
   (180 mph). Real gravity and a tiny bit of air drag, so you can see the arc.
@@ -126,7 +139,7 @@ drawing.
 - **Health.** You have a health bar at the bottom left. It refills very
   slowly once you haven't been hit for a few seconds. Head hits hurt a lot
   more than body hits. Bandits aim where you're standing, so keep moving and
-  use the crates for cover.
+  use the walls and roof edges for cover.
 - **Collecting arrows.** Bandit arrows (red feathers) and your own (white)
   that hit the train stay stuck in it. Get within reach (3.4 m, nothing in
   the way), look at one and Grab it to add it to your quiver (up to 40).
@@ -164,5 +177,5 @@ the game (`game`, `startGame()`, `step(frames)`, `setTime(hour)`).
 
 ## Not in this prototype (planned for later)
 
-Getting off in towns, folklore monsters and bosses, AI companions, the
-steam surge (next on the list, §K).
+Getting off in towns, hats on the hat car's rack (§H), the conductor and
+crouching (§S), folklore monsters and bosses, AI companions.

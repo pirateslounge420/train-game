@@ -199,6 +199,7 @@ export class ArrowSystem {
       if (Math.abs(r1.x) > 12 || r1.z < car.z0 - 12 || r1.z > car.z1 + 12) continue;
       const r0 = p0.clone().applyMatrix4(car.prevInv);
       for (const c of car.colliders) {
+        if (c.ghost) continue; // the invisible walls that keep you aboard
         const h = segmentBox(r0, r1, c.min, c.max);
         if (h) consider({ t: h.t, type: 'train', car, r0, r1 });
       }
@@ -277,7 +278,7 @@ export class ArrowSystem {
     const inv = s.car.inv;
     const a = eye.clone().applyMatrix4(inv);
     const b = p.clone().applyMatrix4(inv).lerp(a, 0.06);
-    for (const c of s.car.colliders) if (segmentBox(a, b, c.min, c.max) !== null) return false;
+    for (const c of s.car.colliders) if (!c.ghost && segmentBox(a, b, c.min, c.max) !== null) return false;
     return true;
   }
 

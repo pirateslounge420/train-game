@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { clamp } from '../core/math.js';
+import { ROOF } from '../train/train.js';
 
 const C = CONFIG.player;
 const _m = new THREE.Matrix4();
@@ -13,7 +14,7 @@ const _c = new THREE.Vector3();
 export class Player {
   constructor(train) {
     this.train = train;
-    this.local = new THREE.Vector3(0, 1.46, 17.5); // feet, on the flatcar
+    this.local = new THREE.Vector3(0.25, ROOF + 0.01, 1.2); // feet, on the caboose roof (§C)
     this.car = train.carAt(this.local.z);
     this.colliders = []; // this car's boxes plus the neighbours', in this car's frame
     this.ladders = [];
@@ -87,7 +88,7 @@ export class Player {
         }
         min.y = b.min.y;
         max.y = b.max.y;
-        return { min, max, faceSign: b.faceSign };
+        return b.at ? { ...b, min, max, at: b.at.clone().applyMatrix4(_m) } : { ...b, min, max };
       };
       for (const b of n.colliders) this.colliders.push(bring(b));
       for (const b of n.ladders) this.ladders.push(bring(b));
@@ -126,8 +127,8 @@ export class Player {
     const cos = Math.cos(this.yaw);
     const wx = -sin * fwd + cos * strafe;
     const wz = -cos * fwd - sin * strafe;
-    const onRoof = this.local.y > C.roofHeight;
-    const speed = (onRoof ? C.roofSpeed : C.walkSpeed) * (drawing ? C.drawSlow : 1) * (this.sprinting ? C.sprintBoost : 1);
+    const base = this.car.name === 'tender' ? C.tenderSpeed : this.local.y > C.roofHeight ? C.roofSpeed : C.walkSpeed;
+    const speed = base * (drawing ? C.drawSlow : 1) * (this.sprinting ? C.sprintBoost : 1);
     // Feet on something: you go where you push at once. In the air you
     // still steer, just not instantly (so a push off a ladder carries).
     const accel = this.onGround || this.onLadder ? 1e3 : 30;
@@ -136,9 +137,32 @@ export class Player {
 
     // Only climb when facing the ladder.
     const ladder = this.ladderAt();
-    this.onLadder = !!ladder && -cos * -ladder.faceSign > 0.2;
+    this.onLadder = !!ladder && -sin * ladder.face.x - cos * ladder.face.z > 0.2;
     if (this.onLadder) {
+      if (this.local.y < ladder.top - 0.3) this.climbing = true;
       this.vel.y = fwd * C.climbSpeed;
+      // Off the ground, the ladder holds you: no drifting off it forward or
+      // back (you can still sidestep). Standing at its foot or top you walk.
+      if (!this.onGround) {
+        this.vel.x = cos * strafe * speed;
+        this.vel.z = -sin * strafe * speed;
+      }
+      if (fwd > 0 && this.local.y >= ladder.top) {
+        // At the top. If you climbed up, pushing on steps you off onto the roof.
+        this.vel.y = 0;
+        this.local.y = Math.max(this.local.y, ladder.top + 0.01);
+        if (this.climbing) {
+          // a short step clear of the hole, whichever way you're facing
+          this.stepOff = { t: 0.35, x: ladder.out.x * 2.5, z: ladder.out.z * 2.5 };
+          this.climbing = false;
+        }
+      } else if (fwd !== 0) {
+        // Climbing draws you onto the ladder's line, so you come up square
+        // through a hatch.
+        const k = Math.min(1, 6 * dt);
+        this.local.x += (ladder.at.x - this.local.x) * k;
+        this.local.z += (ladder.at.z - this.local.z) * k;
+      }
       if (jump && fwd <= 0) {
         // push off the ladder
         this.vel.y = C.jumpSpeed * 0.5;
@@ -146,8 +170,15 @@ export class Player {
         this.vel.z = cos * 3;
       }
     } else {
+      this.climbing = false;
       this.vel.y -= C.gravity * dt;
       if (jump && this.onGround) this.vel.y = C.jumpSpeed;
+    }
+
+    if (this.stepOff) {
+      this.vel.x = this.stepOff.x;
+      this.vel.z = this.stepOff.z;
+      if ((this.stepOff.t -= dt) <= 0) this.stepOff = null;
     }
 
     this.onGround = false;
