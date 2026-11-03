@@ -1,5 +1,7 @@
 # Train Game — first prototype
 
+> **Design and sync:** `docs/DESIGN.md` holds every locked decision, `docs/PROGRESS.md` the log, and `reference/` Claude chat's playable reference build (the spec for feel). `CLAUDE.md` says how the two Claudes share this repo.
+
 A low-poly, first-person Wild West rail shooter that runs in the browser.
 You ride a steam train through an endless desert and fight off bandits on
 horseback with a bow and arrow.

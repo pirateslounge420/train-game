@@ -1,0 +1,82 @@
+# The Train Game — design
+
+Locked decisions only. Each section has a letter so prompts, commits and progress entries can point at it. Newest at the bottom. Where a section says "as in the reference build", the numbers live in `reference/train-game-prototype-<version>.html` (Claude chat's playable build); port them, don't guess. Where two sections disagree, the later one wins.
+
+Status key: **built (ref)** = in the reference build; **built (repo)** = in `src/`; **not built**.
+
+## §A. What the game is
+- Wild West rail shooter, first person, low-poly. Made-up era where steam was pushed further instead of moving to electricity: engineers run ~1000 psi boilers; the engine is a six-cylinder piston engine with visible rods plus a steam turbine (with the turbine engaged it can reach ~300 mph, but takes a while to get there).
+- Arcade "how far can you get": ride the line through changing country; towns between regions; cruise speed steps up each region; infinite, no ending. Landscapes keep changing, never loop.
+- Everybody uses bows and arrows. Threats later: bandits, folklore beasts per region, a boss creature in the deepest wilderness between towns, environmental hazards. Day-night cycle (144-minute day), night more dangerous. Possibly a recruit per town (AI companion you don't control). None of the "later" items are built.
+
+## §B. Archery (built ref 0.5)
+- Hold to draw, release to loose. Full draw in 0.7 s. Draw again immediately after a shot (Minecraft feel), no nocking delay.
+- Precision is the game: no aim assist, no arc preview. Headshots and other precise hits are rewarded.
+- Arrow physics are real: gravity, air drag tiny, arrows inherit the train's velocity. The arc is visible.
+- **Speed (0.5):** snap shot 45 m/s (100 mph), full draw 80 m/s (180 mph).
+- **Zeroed sight (0.5):** the arrow leaves slightly nose-up so it lands on the crosshair at 15 m (snap) to 35 m (full draw); beyond that it drops. Formula and numbers in the reference build's `fire()`.
+- Every arrow draws a comet-tail trail: pale blue-white for yours, orange-red for theirs.
+- Arrows are limited (start 20, cap 40). Arrows that stick in your cars (yours or theirs) can be pulled out and reused. Towns give +12.
+- Crosshair: a thin cross with an open centre; a brief X flashes through it on any hit, brighter (brass) for headshots, neck shots and hat shots.
+
+## §C. The player on the train (built ref)
+- First person. Health bar with very slow regen; the bar only shows when you're hit, or in the stats panel.
+- You walk the train: caboose roof (low rail all round, gate at the front), rear platform (waist-high rail), cabin (three open windows a side, doors front and rear), ladder on the rear wall; forward across the hat car roof to the tender.
+- Ladders: face them and push forward to climb, pull back to come down.
+- Walk speed as in the reference build; Jump (Space / button).
+- Phone controls: left stick walks, drag the view to look, hold Draw and drag the same finger to aim, Jump, Surge, Grab, tap a stuck arrow. Desktop: WASD, mouse look with pointer lock, left click draws, right click / E grabs, Space jumps, Shift surges, Tab holds the stats.
+
+## §D. The train (built ref)
+- Rear to front: **caboose** (player's home car), **hat car** (§H), **tender** (coal deck, side boards), **locomotive** (boiler, brass bands, stack, headlamp, cab, six cylinders implied, rods on the drivers).
+- Each car rides its own point on the track (§F), so the train bends through curves.
+- Steam surge: a stored-steam burst (+22 m/s for 4.5 s) that leaves riders behind. **It does not refill on its own.** Shovel coal on the tender: three scoops fill it. Towns stoke it free. Mouse wheel / 1 / 2 swaps bow and shovel. The game is never engine management: the shovel is a run along the roofs while riders shoot at you, nothing more.
+
+## §E. Riders (built ref 0.4)
+- Little western dudes: hat drawn down, bandana up, the face a dark void. Exaggerated hats. Ponchos stream behind in the wind.
+- Four gangs by poncho colour and pattern: green + yellow lightning, red + orange flames, blue + violet waves, indigo + magenta stars. The accent colour carries the pattern and the bandana; hats stay dark across all four.
+- Horses run a four-beat rotary gallop: hind pair drives, front pair reaches, the body rocks and bobs with the stride. Two-segment legs.
+- They flank the train, hold off at 9–23 m, shoot back (accuracy tightens by region), flee at tunnels and towns, and ride off when hit hard.
+
+## §F. Hit zones and gore (built ref 0.4)
+Priority order when an arrow clips more than one zone within 0.3 m:
+1. **Hat** — the hardest shot in the game (a thin zone above the head). The hat spins off; the rider loses his nerve and bolts.
+2. **Neck** — the head flies clean, high, spinning. Kill.
+3. **Head** — the head pops with a burst of chunky gibs. Kill.
+4. **Horse head** — horse down, rider thrown.
+5. **Horse legs (four)** — the leg blows off; the horse cartwheels toward that leg; rider thrown.
+6. **Rider body** — two hits knock him off.
+7. **Horse body** — three hits bring it down.
+Gore is theatrical and chunky, American McGee's Alice by way of Super Monkey Ball: pieces bounce and spin before they settle, then fade.
+
+## §G. The line and the country (built ref 0.3)
+- The track curves: radius 170–460 m, at most ~50° per curve, straight through towns and tunnels, heading kept roughly true so it never loops on itself. Sampled every 2 m; terrain and decorations are placed by distance to the line.
+- Six regions cycle, each longer and faster than the last (cruise 15 m/s + 5 per region, cap 62): Prairie, Red Desert, High Pass, Pine Country, Salt Flats, Badlands. Towns at every region boundary (stop 6 s: rest, +12 arrows, boiler stoked).
+- High Pass and Badlands have a tunnel: cliff portal, dark stone bore with lanterns, a mountain over the top. Riders peel off before it; none spawn in it.
+
+## §H. Hats and the hat car (built ref 0.4)
+- The first hat shot off each gang boomerangs up, back through the hat car's side hatch and lands on the rack inside. A gang you already have: the hat just tumbles off.
+- The hat car is the second car. Inside: racks along both walls, open side hatches to shoot from, a roof hatch with a ladder at the back-left. You reach it through the caboose's front door or down that ladder.
+- Stats count hats racked (out of the number of gangs) and hat shots.
+
+## §I. HUD (built ref 0.4)
+- Clean by default: crosshair, the buttons, and the speed. Speed is always on: big mph, small km/h, tap to swap (remembered).
+- Hold Tab (desktop) or the Stats button (touch) for everything else: distance, country, arrows, riders down, headshots, hats, hat shots, best run.
+
+## §J. The look (built ref 0.3)
+From the Torchfire reference frames (Mike's twenty favourites; `docs/design/LOOK_REFERENCE.md` in the Torchfire repo):
+- Dark but saturated. Cobalt sky (#0000C4 overhead to #2350F0 near the horizon) fading to a lighter blue haze (#4F98EF) in the distance: distance gets lighter and bluer, never darker.
+- Shade goes navy, never grey: hemisphere light with a navy ground colour; the sun is the only light.
+- Chunky textures, ~16 texels a metre, nearest-filtered, detail painted into the albedo; no normal maps, no specular. Clean low-poly silhouettes.
+- Painted off-white clouds. A 480-line internal frame scaled up with no smoothing.
+- One warm accent in the wild (lanterns, the headlamp, the firebox). Blood is the exception.
+
+## §W. Co-op (direction, not built)
+Couch split-screen, up to four on one train, after single-player is tight. From now on no system assumes one player: player state is per-player, the train and the world are shared.
+
+## §Z. The queue (order of work for Claude Code)
+1. Port the reference build's feel into `src/`, feature by feature, keeping the repo's module layout: §B archery (speeds, zero, immediate redraw, trails, crosshair), §C walking and phone controls, §G the curving line and regions, §D the four cars and the surge, §E–§F riders and gore, §H hats, §I HUD, §J look. Stop and explain after each.
+2. Deploy to GitHub Pages on every push to `main`, so Mike plays from a link on his phone.
+3. The cab and firebox: the coal run continues forward from the tender, scoop then throw in the firebox.
+4. The first town stop: get off, walk one street, a store that restocks arrows.
+5. Trophies persist: the hat rack keeps its hats across runs.
+6. Co-op (§W).
