@@ -233,10 +233,10 @@ A second chat built these into the same artifact on 3 Nov and they are kept in t
 
 **The gangs pile up.** Like Black Ops Zombies: riders you don't kill in a stretch follow you into the next, so the stretches get harder until you can't hold out.
 
-**Open.** Mike's notes say the stretches were made 100 % longer, but §K says 25 %: which is current?
+**Stretches between towns are 100 % longer than the original** (Mike, 3 Nov; supersedes §K's 25 %): region length = cruise × 210 s (was × 131 s; the original was × 105 s).
 
 ## §Z. The queue (order of work for Claude Code)
-0. **Next, before the rest of item 1 (3 Nov, late afternoon):** fix arrows passing through riders (§X), then the cam bow's speeds (§X), two surges a stretch (§Y), and towns refilling to 15 arrows (§X). Small, and it's the core feel.
+0. **Next, before the rest of item 1 (3 Nov, late afternoon):** fix arrows passing through riders (§X), then the cam bow's speeds (§X), two surges a stretch (§Y), stretches 100 % longer (§Y), and towns refilling to 15 arrows (§X). Small, and it's the core feel.
 1. Port the reference build's feel into `src/`, feature by feature, keeping the repo's module layout: §B/§L/§U archery and hitboxes, §C/§M walking and phone controls, §G/§R the seeded line, climate biomes and the day, §D/§K/§N the four cars, the engine and the surge, §E/§O/§U riders, dismounted riders and gore (as data), §H/§T hats, §I HUD, §J/§Q look, §S the conductor, crouch, knock-off and hook. Stop and explain after each.
 2. Deploy to GitHub Pages on every push to `main`, so Mike plays from a link on his phone.
 3. The first town stop: get off, walk one street, a store that restocks arrows.
