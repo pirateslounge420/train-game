@@ -1,5 +1,15 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (evening) — Claude Code: §Z.1 step 7, the HUD and stats panel (§I)
+- Clean by default, as in reference 0.7: the crosshair, the buttons and the speed. The old stats line and the bottom-corner health bar and arrow count are gone. Speed is big mph over small km/h; tap it to swap, and it's remembered on that device.
+- Hold Tab (desktop) or the Stats button (phone) for the panel: distance, country, arrows, riders down, headshots, hats racked (of 4), hat shots, wearing, best run, time (tap: +3 h) and seed. On a short screen it goes to two columns.
+- Health, as in the reference: top right, for 2.5 s after a hit and while Stats is held. Low health no longer shows by itself; the red flash is your warning.
+- Crosshair: opens to 1.6× at full draw, as in the reference. This had been missed in the bow step.
+- Best run: saved on the device at death, shown in the panel and on the death card.
+- Added beyond the reference: a Surges row, since a desktop player has no Surge button and the dots had nowhere else to go; and the U key, because a locked mouse can't tap the speed. Left out: the reference's sound button, which §I doesn't list.
+- On desktop the arrow count now only shows behind Tab, following §I. On a phone it's on the Draw button.
+- Checked in the browser (seed 7), at desktop size, 375×812 and 667×375 with touch events: panel opens and closes, every row filled in, units swap and are stored, health shows on a hit and hides again, crosshair 1 → 1.25 → 1.6 → 1 through a real held draw, time tap +3 h, best run saved at death. Nothing overflows; in landscape the open panel covers the Surge button while Stats is held. No page errors. Not tested on a real phone.
+
 ## 2026-11-03 (night) — Claude Code (second session): §Z item 0 checked, hit debug view (§X)
 - A parallel session pushed §Z item 0 (commit 8bdc032) while this session was measuring, so nothing in it was redone. This session added the debug view and an independent check of that fix.
 - New `src/debug/hitview.js`: press **H** (or open with `?hitboxes`) to draw every rider part's hit boxes as wireframes, padding included, and each of your arrows' path frame by frame (green where it hit, white where it flew on), kept 4 s. Debug only.

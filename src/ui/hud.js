@@ -3,19 +3,37 @@ import { TOUCH } from '../core/input.js';
 import { biomeOf } from '../world/line.js';
 import { SURGES } from '../train/train.js';
 
-// On-screen display: health, arrows, hit markers and messages.
+// Saved settings. Private windows can refuse these, and that's fine.
+function store(key, value) {
+  try {
+    if (value === undefined) return localStorage.getItem(key);
+    localStorage.setItem(key, value);
+  } catch (e) {}
+  return null;
+}
+
+// On-screen display (§I): the speed, the stats panel behind Tab or the Stats
+// button, health when you're hurt, hit markers and messages.
 export class Hud {
   constructor() {
     const $ = (id) => document.getElementById(id);
+    this.health = $('health');
     this.healthFill = $('health-fill');
-    this.arrowCount = $('arrow-count');
+    this.lastHealth = Infinity;
+    this.hpShow = 0;
+    // Speed: big in your chosen unit, small in the other, remembered (§I).
+    this.spd = { big: $('spd-big'), unit: $('spd-unit'), small: $('spd-small') };
+    this.mph = store('tgp_units') !== 'kmh';
+    this.best = parseFloat(store('tgp_best')) || 0;
     this.stats = $('stats');
-    this.stats.innerHTML = '<span id="st-speed"></span> · <span id="st-dist"></span> · <span id="st-country"></span> · <span id="st-tod" title="tap: +3 hours"></span> · seed <span id="st-seed"></span> · downed <span id="st-down"></span> <span class="desktop-only">· surges <span id="st-surge"></span></span>';
-    this.st = { speed: $('st-speed'), dist: $('st-dist'), country: $('st-country'), tod: $('st-tod'), seed: $('st-seed'), down: $('st-down'), surge: $('st-surge') };
+    this.st = {};
+    for (const k of ['dist', 'country', 'arrows', 'surge', 'down', 'heads', 'hats', 'hatshots', 'wear', 'best', 'tod', 'seed']) this.st[k] = $(`st-${k}`);
+    this.crossLines = document.querySelector('#cross .xh');
+    this.crossScale = '';
     this.surgeBtn = $('surge');
     this.surgeLbl = $('surgelbl');
     this.onTimeTap = null;
-    this.st.tod.addEventListener('pointerdown', (e) => {
+    $('st-todrow').addEventListener('pointerdown', (e) => {
       e.preventDefault();
       this.onTimeTap?.();
     });
@@ -27,7 +45,6 @@ export class Hud {
     this.feed = $('feed');
     this.vignette = $('vignette');
     this.prompt = $('prompt');
-    this.lastArrows = -1;
     this.hintText = '';
     this.hintT = 0;
     // phone buttons
@@ -41,31 +58,50 @@ export class Hud {
       this.hitT -= dt;
       if (this.hitT <= 0) this.cross.classList.remove('hit', 'big');
     }
-    const p = game.player;
-    this.healthFill.style.width = `${(p.health / CONFIG.player.maxHealth) * 100}%`;
-    this.healthFill.classList.toggle('low', p.health < 30);
-    if (p.arrows !== this.lastArrows) {
-      this.arrowCount.textContent = `${p.arrows} / ${CONFIG.player.maxArrows}`;
-      this.drawn.textContent = p.arrows;
-      this.arrowCount.classList.toggle('empty', p.arrows === 0);
-      this.lastArrows = p.arrows;
-    }
-    const t = game.train;
-    const h = ((day.dayT / day.dayLen) % 1) * 24;
+    const p = game.player, t = game.train;
     const set = (el, v) => {
       if (el.textContent !== v) el.textContent = v;
     };
-    set(this.st.speed, `${Math.round(t.speed * 2.237)} mph`);
-    set(this.st.dist, `${(Math.max(0, t.distance) / 1609.34).toFixed(2)} mi`);
-    set(this.st.country, biomeOf(t.region).name);
-    set(this.st.tod, `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`);
-    set(this.st.seed, String(day.seed));
-    set(this.st.down, String(game.riders.kills));
+    const mph = Math.round(t.speed * 2.237), kmh = Math.round(t.speed * 3.6);
+    set(this.spd.big, String(this.mph ? mph : kmh));
+    set(this.spd.unit, this.mph ? 'mph' : 'km/h');
+    set(this.spd.small, this.mph ? `${kmh} km/h` : `${mph} mph`);
+
+    // Health shows for a moment when you're hit, and while you hold Stats.
+    if (p.health < this.lastHealth && this.lastHealth !== Infinity) this.hpShow = 2.5;
+    this.lastHealth = p.health;
+    if (this.hpShow > 0) this.hpShow -= dt;
+    this.healthFill.style.width = `${(p.health / CONFIG.player.maxHealth) * 100}%`;
+    this.healthFill.classList.toggle('low', p.health < 30);
+    this.health.classList.toggle('on', this.hpShow > 0 || day.stats);
+
     const dots = '●'.repeat(t.surges) + '○'.repeat(Math.max(0, SURGES - t.surges));
-    set(this.st.surge, dots);
+    this.stats.classList.toggle('on', day.stats);
+    if (day.stats) {
+      const st = this.st, h = ((day.dayT / day.dayLen) % 1) * 24, R = game.riders;
+      set(st.dist, `${(Math.max(0, t.distance) / 1609.34).toFixed(2)} mi`);
+      set(st.country, biomeOf(t.region).name);
+      set(st.arrows, `${p.arrows} / ${CONFIG.player.maxArrows}`);
+      set(st.surge, dots);
+      set(st.down, String(R.kills));
+      set(st.heads, String(R.headshots));
+      set(st.hats, `${game.hats.racked.length} / ${R.gangs.length}`);
+      set(st.hatshots, String(R.hatShots));
+      set(st.wear, p.hat ? `${p.hat.userData.gang} hat` : 'nothing');
+      set(st.best, `${this.best.toFixed(2)} mi`);
+      set(st.tod, `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`);
+      set(st.seed, String(day.seed));
+    }
+    set(this.drawn, String(p.arrows));
     set(this.surgeLbl, dots);
     this.surgeBtn.classList.toggle('empty', t.surges <= 0);
     this.surgeBtn.classList.toggle('on', p.car.name === 'tender' && t.surges > 0);
+    // The crosshair opens as the bow comes to full draw (reference 0.7).
+    const xs = (1 + 0.6 * (p.bow?.drawing ? p.bow.power() : 0)).toFixed(3);
+    if (xs !== this.crossScale) {
+      this.crossScale = xs;
+      this.crossLines.style.transform = `scale(${xs})`;
+    }
     if (this.bannerT > 0) {
       this.bannerT -= dt;
       if (this.bannerT <= 0) this.banner_.classList.remove('on');
@@ -79,6 +115,21 @@ export class Hud {
     } else if (p.onLadder) prompt = TOUCH ? 'Climbing: stick up or down' : 'Climbing: W up, S down';
     else if (p.arrows === 0) prompt = 'Out of arrows! Grab the ones stuck in the train.';
     if (prompt !== this.prompt.textContent) this.prompt.textContent = prompt;
+  }
+
+  // Tap the speed, or press U: swap mph and km/h, and remember it.
+  toggleUnits() {
+    this.mph = !this.mph;
+    store('tgp_units', this.mph ? 'mph' : 'kmh');
+  }
+
+  // The longest run on this device. Returns the best so far.
+  saveBest(miles) {
+    if (miles > this.best) {
+      this.best = miles;
+      store('tgp_best', String(miles));
+    }
+    return this.best;
   }
 
   hitFeedback(kind, text) {

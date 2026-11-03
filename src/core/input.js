@@ -27,6 +27,8 @@ export class Input {
     this.jumpReq = false;
     this.grabReq = false;
     this.surgeReq = false;
+    this.unitsReq = false;
+    this.statsTouch = false;
     this.cancelReq = false;
     this.taps = []; // screen points tapped this frame (to grab a stuck arrow)
 
@@ -41,6 +43,8 @@ export class Input {
         e.preventDefault();
         this.jumpReq = true;
       }
+      if (e.code === 'Tab') e.preventDefault(); // held for stats (§I), not the browser's focus
+      if (e.code === 'KeyU' && !e.repeat) this.unitsReq = true;
       if (e.code === 'KeyE') this.grabReq = true;
       if ((e.code === 'KeyQ' || e.code === 'KeyF') && !e.repeat) this.surgeReq = true;
     });
@@ -200,6 +204,19 @@ export class Input {
       e.preventDefault();
       this.grabReq = true;
     });
+    $('speedo').addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      this.unitsReq = true;
+    });
+    const stats = $('statsbtn');
+    stats.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      capture(stats, e);
+      this.statsTouch = true;
+    });
+    const statsUp = () => (this.statsTouch = false);
+    stats.addEventListener('pointerup', statsUp);
+    stats.addEventListener('pointercancel', statsUp);
   }
 
   lock() {
@@ -209,8 +226,14 @@ export class Input {
     } catch (err) {}
   }
 
+  // Tab, or the Stats button (§I).
+  statsHeld() {
+    return this.statsTouch || this.keys.has('Tab');
+  }
+
   reset() {
     this.keys.clear();
+    this.statsTouch = false;
     this.mouse = [false, false, false];
     this.dx = this.dy = 0;
     this.sprint = false;

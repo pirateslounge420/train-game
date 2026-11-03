@@ -29,19 +29,65 @@ body:not(.touch) #touch {
   inset: 0;
   pointer-events: none;
 }
-.label {
-  font-size: 12px;
-  letter-spacing: 2px;
-  opacity: 0.85;
-  margin-bottom: 4px;
+/* The speed, always on, and the stats panel behind it (§I; reference 0.7). */
+#top {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
+#speedo {
+  pointer-events: auto;
+  touch-action: none;
+  background: rgba(22, 15, 10, 0.55);
+  border: 1px solid rgba(243, 230, 200, 0.28);
+  border-radius: 3px;
+  padding: 4px 10px 5px;
+  color: #f3e6c8;
+  font: inherit;
+  text-align: left;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0 6px;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+#speedo .big { font-size: 30px; font-weight: 700; line-height: 1; letter-spacing: 0.5px; }
+#speedo .unit { font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase; color: #e2aa3f; }
+#speedo .small { grid-column: 1 / 3; font-size: 12px; color: #c7b48e; letter-spacing: 1px; }
+#statsbtn { width: 60px; height: 48px; border-radius: 4px; font-size: 12px; opacity: 0.7; }
 #stats {
   position: absolute;
-  top: 14px;
-  left: 18px;
-  font-size: 14px;
-  text-shadow: 0 1px 3px #000;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  min-width: 230px;
+  max-width: calc(100vw - 32px);
+  background: rgba(22, 15, 10, 0.9);
+  border: 1px solid rgba(243, 230, 200, 0.28);
+  border-radius: 4px;
+  padding: 12px 14px;
+  display: none;
+  gap: 6px 22px;
+  font-variant-numeric: tabular-nums;
 }
+#stats.on { display: grid; z-index: 1; }
+#stats .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  font-size: 13px;
+  color: #c7b48e;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+#stats .row b { color: #f3e6c8; font-size: 16px; letter-spacing: 0; text-transform: none; }
+#st-todrow { pointer-events: auto; cursor: pointer; }
 
 /* Crosshair and hit X, as in reference 0.7 (52 px). */
 #cross {
@@ -57,6 +103,7 @@ body:not(.touch) #touch {
   stroke-linecap: square;
   filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9));
 }
+#cross .xh { transform-origin: 36px 36px; }
 #cross .xh line { stroke-width: 2; }
 #cross .xm line { stroke-width: 2.5; opacity: 0; transition: opacity 0.08s; }
 #cross.hit .xm line { opacity: 1; }
@@ -85,8 +132,8 @@ body:not(.touch) #touch {
 
 #feed {
   position: absolute;
-  top: 44px;
-  left: 18px;
+  top: 78px;
+  left: max(16px, env(safe-area-inset-left));
   font-size: 15px;
   text-shadow: 0 1px 3px #000;
 }
@@ -102,37 +149,29 @@ body:not(.touch) #touch {
   text-shadow: 0 1px 3px #000;
 }
 
+/* Health only shows when you're hit or holding Stats (§I; reference 0.7). */
 #health {
   position: absolute;
-  left: 22px;
-  bottom: 22px;
-  text-shadow: 0 1px 3px #000;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  width: 132px;
+  height: 9px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(243, 230, 200, 0.28);
+  border-radius: 2px;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.3s;
 }
-#health-bar {
-  width: 240px;
-  height: 14px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 2px solid #c99a3c;
-  border-radius: 3px;
-}
+#health.on { opacity: 1; }
 #health-fill {
   height: 100%;
   width: 100%;
-  background: linear-gradient(#d0503a, #9a2a1e);
+  background: #d13d2f;
   transition: width 0.15s;
 }
 #health-fill.low { animation: pulse 0.8s infinite alternate; }
 @keyframes pulse { to { filter: brightness(1.8); } }
-
-#quiver {
-  position: absolute;
-  right: 26px;
-  bottom: 22px;
-  text-align: right;
-  text-shadow: 0 1px 3px #000;
-}
-#arrow-count { font-size: 30px; font-weight: bold; }
-#arrow-count.empty { color: #ff6a4a; }
 
 #vignette {
   position: absolute;
@@ -251,14 +290,11 @@ body:not(.touch) #touch {
   box-sizing: border-box;
   pointer-events: none;
 }
-/* On a phone the Draw button shows the arrow count, and health moves up top. */
-body.touch #quiver { display: none; }
-body.touch #health { left: auto; right: max(18px, env(safe-area-inset-right)); top: 42px; bottom: auto; }
-body.touch #feed { top: 72px; }
-body.touch #health-bar { width: 160px; }
 body.touch #prompt { bottom: 196px; padding: 0 16px; box-sizing: border-box; }
-body.touch #stats { left: max(18px, env(safe-area-inset-left)); }
 @media (max-height: 420px) {
+  #speedo .big { font-size: 22px; }
+  #stats { grid-template-columns: 1fr 1fr; }
+  #feed { top: 66px; }
   #draw { width: 84px; height: 84px; }
   #jump { width: 60px; height: 60px; }
   #surge { width: 60px; height: 60px; }
@@ -293,4 +329,3 @@ body.touch #stats { left: max(18px, env(safe-area-inset-left)); }
   margin-top: 4px;
 }
 #banner.on { opacity: 1; }
-#st-tod { pointer-events: auto; cursor: pointer; text-decoration: underline dotted; }

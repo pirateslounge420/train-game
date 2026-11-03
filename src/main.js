@@ -82,7 +82,7 @@ train.onArrive = (i) => {
   hud.banner(TOWNS[i % TOWNS.length], `Rested · ${refill ? `+${refill} arrows · ` : ''}next: ${biomeOf(i).name}`);
 };
 train.onDepart = () => sound.whistle();
-// Tap the time on the stats line: jump three hours (for testing, §R).
+// Tap the time in the stats panel: jump three hours (for testing, §R).
 hud.onTimeTap = () => (dayT += DAY_LEN / 8);
 let tunnelBannered = -1;
 const HEADLAMP = 300; // candela-ish; three.js lights fall off with distance
@@ -165,7 +165,9 @@ function showDeath() {
   input.active = false;
   document.exitPointerLock();
   overlayTitle.textContent = 'You died';
-  overlayText.innerHTML = `${player.deathReason}<br>You rode ${(train.distance / 1609.34).toFixed(2)} miles and downed ${game.riders.kills} riders.`;
+  const miles = train.distance / 1609.34;
+  const best = hud.saveBest(miles);
+  overlayText.innerHTML = `${player.deathReason}<br>You rode ${miles.toFixed(2)} miles and downed ${game.riders.kills} riders.<br>Best ${best.toFixed(2)} miles.`;
   overlayButton.textContent = 'Click to ride again';
   overlay.classList.remove('hidden');
 }
@@ -230,11 +232,12 @@ function update(dt) {
   game.hitView.update(dt);
   if (input.take('grabReq')) grab();
   if (input.take('surgeReq')) surge();
+  if (input.take('unitsReq')) hud.toggleUnits();
   for (const t of input.takeTaps()) grab(t);
   smoke.update(dt, train);
   player.updateHealth(dt);
   trainSounds(dt);
-  hud.update(game, dt, { dayT, dayLen: DAY_LEN, seed: SEED });
+  hud.update(game, dt, { dayT, dayLen: DAY_LEN, seed: SEED, stats: input.statsHeld() });
   if (player.dead) showDeath();
 }
 

@@ -11,7 +11,25 @@
   </head>
   <body>
     <div id="hud">
-      <div id="stats"></div>
+      <!-- Clean by default (§I): the speed stays on, the rest waits behind Tab or Stats. -->
+      <div id="top">
+        <button id="speedo" type="button" aria-label="speed, tap to swap units"><span class="big" id="spd-big">0</span><span class="unit" id="spd-unit">mph</span><span class="small" id="spd-small">0 km/h</span></button>
+        <button id="statsbtn" class="btn touch-only" type="button">Stats</button>
+      </div>
+      <div id="stats">
+        <div class="row"><span>Distance</span><b id="st-dist"></b></div>
+        <div class="row"><span>Country</span><b id="st-country"></b></div>
+        <div class="row"><span>Arrows</span><b id="st-arrows"></b></div>
+        <div class="row"><span>Surges</span><b id="st-surge"></b></div>
+        <div class="row"><span>Riders down</span><b id="st-down"></b></div>
+        <div class="row"><span>Headshots</span><b id="st-heads"></b></div>
+        <div class="row"><span>Hats racked</span><b id="st-hats"></b></div>
+        <div class="row"><span>Hat shots</span><b id="st-hatshots"></b></div>
+        <div class="row"><span>Wearing</span><b id="st-wear"></b></div>
+        <div class="row"><span>Best run</span><b id="st-best"></b></div>
+        <div class="row" id="st-todrow"><span>Time (tap: +3 h)</span><b id="st-tod"></b></div>
+        <div class="row"><span>Seed</span><b id="st-seed"></b></div>
+      </div>
       <!-- crosshair: a thin cross with an open centre; the X flashes on a hit (§B, §L) -->
       <svg id="cross" viewBox="0 0 72 72" aria-hidden="true">
         <g class="xh"><line x1="36" y1="21" x2="36" y2="30" /><line x1="36" y1="42" x2="36" y2="51" /><line x1="21" y1="36" x2="30" y2="36" /><line x1="42" y1="36" x2="51" y2="36" /></g>
@@ -21,14 +39,7 @@
       <div id="callout"></div>
       <div id="feed"></div>
       <div id="prompt"></div>
-      <div id="health">
-        <div class="label">HEALTH</div>
-        <div id="health-bar"><div id="health-fill"></div></div>
-      </div>
-      <div id="quiver">
-        <div class="label">ARROWS</div>
-        <div id="arrow-count"></div>
-      </div>
+      <div id="health" aria-label="health"><div id="health-fill"></div></div>
       <div id="vignette"></div>
       <!-- phone controls (§C): hidden when there's a mouse -->
       <div id="touch">
@@ -58,6 +69,8 @@
           <tr><td>Hold left mouse</td><td>Draw the bow, let go to loose</td></tr>
           <tr><td>Right mouse / E</td><td>Grab the stuck arrow you look at</td></tr>
           <tr><td>Q or F on the tender</td><td>Steam surge: two a stretch, towns restock them</td></tr>
+          <tr><td>Hold Tab</td><td>Stats: arrows, distance, hats and the rest</td></tr>
+          <tr><td>U</td><td>Swap mph and km/h</td></tr>
           <tr><td>Esc</td><td>Pause</td></tr>
         </table>
         <table class="controls touch-only">
@@ -67,6 +80,7 @@
           <tr><td>Jump</td><td>Jump</td></tr>
           <tr><td>Surge</td><td>Steam surge from the tender: two a stretch</td></tr>
           <tr><td>Grab / tap</td><td>Pull a stuck arrow out (it lights up when one's in reach)</td></tr>
+          <tr><td>Hold Stats</td><td>Distance, hats and the rest. Tap the speed to swap mph and km/h</td></tr>
         </table>
         <p class="tip">Arrows that stick in the train can be pulled back out. Aim for the head.</p>
         <div id="overlay-button"><span class="desktop-only">Click</span><span class="touch-only">Tap</span> to start riding</div>

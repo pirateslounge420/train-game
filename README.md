@@ -93,7 +93,7 @@ drawing.
   stars, a moon and the engine's headlamp lit. Night brings two extra
   riders.
 - **The seed.** Every run's line, country and towns come from one number,
-  shown on the stats line. Add `?seed=1234` to the address to ride the
+  shown in the stats panel. Add `?seed=1234` to the address to ride the
   same line again.
 - **The train** (design §D, §N, ported from reference build 0.7). From the
   back: the **caboose** (your home car), the **hat car**, the **tender** and
@@ -116,7 +116,7 @@ drawing.
   (or the **Surge** button on a phone). Each surge adds 26 m/s (58 mph) on
   top of the last, up to 200 mph, then bleeds back to cruising speed. Once
   you're going about 12 m/s faster than cruise, the riders can't keep up. You get
-  two a stretch, shown as dots on the stats line or the button, and each
+  two a stretch, shown as dots in the stats panel or on the button, and each
   town restocks them.
 - **Bow and arrow** (design §B, §L, §U, ported from reference build 0.7).
   A snap shot leaves at 63 m/s (140 mph) and a full draw at 112 m/s
@@ -154,7 +154,14 @@ drawing.
   second or two (any faster and the fall kills him), runs
   at the train, fires two or three wild shots, then runs for it. Any hit
   finishes him. He only counts as downed if you finish him.
-- **Health.** You have a health bar at the bottom left. It refills very
+- **The display** (§I). Clean by default: the crosshair, the buttons and
+  the speed, big in mph with km/h under it. Tap the speed (or press **U** on
+  a desktop) to swap them, and it's remembered. Hold **Tab** or the **Stats**
+  button for the rest: distance, country, arrows, surges, riders down,
+  headshots, hats racked, hat shots, what you're wearing, best run, the time
+  and the seed. The crosshair opens up as you draw.
+- **Health.** The bar shows at the top right for a moment when you're hit,
+  and while you hold Stats. It refills very
   slowly once you haven't been hit for a few seconds. Head hits hurt a lot
   more than body hits. Bandits aim where you're standing, so keep moving and
   use the walls and roof edges for cover.
@@ -186,7 +193,7 @@ src/
   combat/arrows.js    arrow flight, hits, sticking, and grabbing them back
   enemies/rigs.json   riders as data: body parts, hit reactions, gangs (edit freely)
   enemies/riders.js   riding, shooting, hits, gore, riders on foot
-  ui/hud.js           health, arrows, hit markers, messages
+  ui/hud.js           speed, stats panel, health, hit markers, messages
   audio/sound.js      all sounds (generated in code, no audio files)
 ```
 
