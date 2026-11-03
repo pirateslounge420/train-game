@@ -17,13 +17,14 @@ const PI=Math.PI;
 const COL={ black:0x101117, plate:0x1b1c25, plate2:0x272938, chrome:0x7d8292, violet:0x6f33e8, glow:0xa877ff,
             coat:0x1a1622, bandana:0x7b55f0, hatband:0x5a2ad0, boot:0x14110f, shaft:0xcdbf9a, fletch:0x8a5cf0 };
 
-function makeMaterials(THREE){
+// accent: the energy colour. The concept frame is violet; DESIGN.md §V names green (0x3dff8a) as the signature glow. Pass {accent:0x3dff8a} for §V.
+function makeMaterials(THREE,accent){
   const L=(c,o)=>new THREE.MeshLambertMaterial(Object.assign({color:c},o||{}));
-  const M={};
+  const M={}; const A=new THREE.Color(accent===undefined?COL.glow:accent), Ad=A.clone().multiplyScalar(0.36), Al=A.clone().lerp(new THREE.Color(0xffffff),0.35);
   M.black=L(COL.black); M.plate=L(COL.plate); M.plate2=L(COL.plate2); M.chrome=L(COL.chrome);
-  M.violet=L(COL.violet,{emissive:0x2a0f66});
-  M.glow=L(0x3a1a7a,{emissive:COL.glow,emissiveIntensity:0.9});          // lightning veins, bands, hubs
-  M.eye=new THREE.MeshBasicMaterial({color:0xc9a6ff});                      // horse eye, goggle lenses: unlit, always bright
+  M.violet=L(Ad.clone().multiplyScalar(1.6).getHex(),{emissive:Ad.getHex()});
+  M.glow=L(Ad.getHex(),{emissive:A.getHex(),emissiveIntensity:0.9});          // lightning veins, bands, hubs
+  M.eye=new THREE.MeshBasicMaterial({color:Al.getHex()});                      // horse eye, goggle lenses: unlit, always bright
   M.coat=L(COL.coat); M.bandana=L(COL.bandana); M.hatband=L(COL.hatband); M.boot=L(COL.boot);
   M.shaft=L(COL.shaft); M.fletch=L(COL.fletch); M.string=new THREE.MeshBasicMaterial({color:0xe8e2cf});
   M.chevron=L(0xffffff,{map:chevronTexture(THREE)});                        // the poncho
@@ -143,7 +144,7 @@ function buildRig(THREE,M,defs,parts){
 }
 // returns {root, horse, rider, parts, hat, cape, bow, animate}
 function build(THREE,opts){
-  opts=opts||{}; const M=opts.materials||makeMaterials(THREE);
+  opts=opts||{}; const M=opts.materials||makeMaterials(THREE,opts.accent);
   const root=new THREE.Group(); const horse=new THREE.Group(); horse.position.y=1.15; root.add(horse);
   const parts={}; buildRig(THREE,M,HORSE,parts); horse.add(parts.barrel.g);
   buildRig(THREE,M,RIDER,parts);
