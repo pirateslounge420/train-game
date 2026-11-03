@@ -261,12 +261,15 @@ export class Terrain {
     this.chunks = new Map();
   }
 
-  // Keep chunks around the train. `maxBuild` limits how many new chunks we
-  // make per frame so the game never stutters.
-  update(trainZ, maxBuild = 1) {
-    const center = Math.floor(trainZ / CHUNK);
-    const first = center - AHEAD;
-    const last = center + BEHIND;
+  // Keep chunks around the train and the player (who may have been left
+  // behind on foot). `frontZ` is the furthest-ahead point (smaller z),
+  // `backZ` the furthest-behind one. `maxBuild` limits how many new chunks
+  // we make per frame so the game never stutters.
+  update(frontZ, backZ = frontZ, maxBuild = 1) {
+    const front = Math.floor(frontZ / CHUNK);
+    const back = Math.floor(backZ / CHUNK);
+    const first = front - AHEAD;
+    const last = back + BEHIND;
     for (const [idx, g] of this.chunks) {
       if (idx < first || idx > last) {
         this.scene.remove(g);
@@ -278,8 +281,8 @@ export class Terrain {
       }
     }
     let built = 0;
-    // Build nearest first.
-    for (let idx = center + 1; idx >= first && built < maxBuild; idx--) {
+    // Build nearest the back (where the player usually is) first.
+    for (let idx = back + 1; idx >= first && built < maxBuild; idx--) {
       if (!this.chunks.has(idx)) {
         const g = buildChunk(idx);
         this.scene.add(g);
@@ -287,7 +290,7 @@ export class Terrain {
         built++;
       }
     }
-    for (let idx = center + 2; idx <= last && built < maxBuild; idx++) {
+    for (let idx = back + 2; idx <= last && built < maxBuild; idx++) {
       if (!this.chunks.has(idx)) {
         const g = buildChunk(idx);
         this.scene.add(g);

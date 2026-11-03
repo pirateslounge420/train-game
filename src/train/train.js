@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CONFIG } from '../config.js';
+import { CONFIG, MPH } from '../config.js';
 import { flat, PALETTE as P } from '../core/materials.js';
 import { placeBetween } from '../core/math.js';
 import { RAIL_TOP } from '../world/terrain.js';
@@ -25,16 +25,29 @@ const DRIVER_Z = [-16.6, -14.7, -12.8];
 const MAIN_ROD = 2.9;
 const CYL_BACK_Z = -19.2;
 
+// Open areas you can safely be put down on (feet height y), front to back.
+const LANDINGS = [
+  { x0: 1.12, x1: 1.16, y: 2.26, z0: -22.3, z1: -13.0 }, // right running board
+  { x0: -1.16, x1: -1.12, y: 2.26, z0: -22.3, z1: -13.0 }, // left running board
+  { x0: -1.3, x1: 1.3, y: 4.46, z0: -12.6, z1: -9.9 }, // cab roof
+  { x0: -1.1, x1: 1.1, y: 3.21, z0: -8.6, z1: -2.3 }, // tender, on the coal
+  { x0: -1.1, x1: 1.1, y: 4.36, z0: -0.7, z1: 9.7 }, // boxcar roof
+  { x0: -1.1, x1: 1.1, y: 1.46, z0: 11.4, z1: 23.6 }, // flatcar deck
+];
+const clampN = (v, a, b) => Math.min(b, Math.max(a, v));
+
 export class Train {
   constructor(scene) {
     this.group = new THREE.Group();
     scene.add(this.group);
     this.position = this.group.position;
-    this.speed = CONFIG.train.speed;
+    this.speed = CONFIG.train.startSpeedMph * MPH; // the conductor changes this
+    this.maxSpeed = CONFIG.train.maxSpeedMph * MPH;
     this.velocity = new THREE.Vector3(0, 0, -this.speed);
     this.distance = 0;
 
-    this.colliders = []; // solid boxes { min, max } in train space
+    this.colliders = []; // solid boxes { min, max, low? } in train space
+    // (low = railings: a player being thrown off tumbles over them)
     this.ladders = []; // climbable volumes { min, max }
     this.wheels = []; // { mesh, radius, phase }
     this.rodSides = [];
@@ -49,6 +62,7 @@ export class Train {
   }
 
   update(dt) {
+    this.speed = Math.min(Math.max(this.speed, 0), this.maxSpeed);
     const d = this.speed * dt;
     this.position.z -= d;
     this.distance += d;
@@ -91,8 +105,29 @@ export class Train {
   }
 
   // An invisible collision box.
-  solid(x0, y0, z0, x1, y1, z1) {
-    this.colliders.push({ min: new THREE.Vector3(x0, y0, z0), max: new THREE.Vector3(x1, y1, z1) });
+  solid(x0, y0, z0, x1, y1, z1, low = false) {
+    this.colliders.push({ min: new THREE.Vector3(x0, y0, z0), max: new THREE.Vector3(x1, y1, z1), low });
+  }
+
+  // Is a train-space point over the train's footprint (i.e. still "on" it)?
+  inFootprint(p) {
+    return Math.abs(p.x) < 1.62 && p.z > -24.0 && p.z < 24.05 && p.y > 0.9;
+  }
+
+  // The nearest safe place to stand, for a grapple or climbing aboard.
+  landingSpot(p) {
+    let best = null;
+    let bestD = Infinity;
+    const q = new THREE.Vector3();
+    for (const a of LANDINGS) {
+      q.set(clampN(p.x, a.x0, a.x1), a.y, clampN(p.z, a.z0, a.z1));
+      const d = q.distanceToSquared(p);
+      if (d < bestD) {
+        bestD = d;
+        best = q.clone();
+      }
+    }
+    return best;
   }
 
   // A cylinder lying along the Z axis.
@@ -290,7 +325,7 @@ export class Train {
     // front wall (the boiler backhead) with a glowing firebox door
     this.block(-0.97, 2.25, -12.62, 0.97, 4.3, -12.55, cab, false);
     this.solid(-0.85, 2.25, -12.62, 0.85, 4.3, -12.55);
-    this.block(-0.3, 2.6, -12.55, 0.3, 3.05, -12.5, flat(0xff7a2a, { emissive: 0xff5a10, emissiveIntensity: 1.5 }), false);
+    this.firebox = this.block(-0.3, 2.6, -12.55, 0.3, 3.05, -12.5, new THREE.MeshStandardMaterial({ color: 0xff7a2a, flatShading: true, emissive: 0xff5a10, emissiveIntensity: 1.5 }), false);
     for (const s of [-1, 1]) this.block(s * 0.6 - 0.22, 3.55, -12.64, s * 0.6 + 0.22, 3.95, -12.62, flat(0x223040, { metalness: 0.6, roughness: 0.2 }), false);
     // gauges
     for (const x of [-0.45, 0, 0.45]) this.cylZ(0.09, 0.09, 0.05, x, 3.35, -12.53, brass, 10);
@@ -345,6 +380,16 @@ export class Train {
       for (let z = -0.6; z < 10; z += 1.2) this.block(s * 1.46 - 0.02, 1.5, z, s * 1.46 + 0.02, 4.2, z + 0.08, P.darkWood, false);
       this.block(s * 1.47 - 0.02, 1.9, 3.3, s * 1.47 + 0.02, 3.9, 5.7, 0x6e2c1c, false); // door
     }
+    // Roof railing along both sides – crouch behind it for cover.
+    const brass = flat(P.brass, { metalness: 0.7, roughness: 0.35 });
+    for (const s of [-1, 1]) {
+      const x = s * 1.5;
+      this.block(x - 0.035, 5.08, -0.95, x + 0.035, 5.15, 9.95, brass, false);
+      this.block(x - 0.03, 4.68, -0.95, x + 0.03, 4.73, 9.95, P.iron, false);
+      this.block(x - 0.04, 4.3, -0.95, x + 0.04, 4.5, 9.95, P.darkWood, false); // kick board
+      for (let z = -0.95; z <= 10.0; z += 1.1) this.block(x - 0.035, 4.3, z - 0.035, x + 0.035, 5.12, z + 0.035, P.iron, false);
+      this.solid(x - 0.05, 4.25, -1.0, x + 0.05, 5.15, 10.0, true);
+    }
     this.truck(0.8);
     this.truck(8.2);
     this.ladder(0.4, 1.1, 1.45, 4.35, -1.5, -0.95, -1.0, -1);
@@ -360,11 +405,11 @@ export class Train {
     // railings
     for (const s of [-1, 1]) {
       this.block(s * 1.45 - 0.04, 2.3, z0 + 1, s * 1.45 + 0.04, 2.38, z1, brass, false);
-      this.solid(s * 1.45 - 0.05, 1.45, z0 + 1, s * 1.45 + 0.05, 2.38, z1);
+      this.solid(s * 1.45 - 0.05, 1.45, z0 + 1, s * 1.45 + 0.05, 2.38, z1, true);
       for (let z = z0 + 1; z <= z1; z += 1.3) this.block(s * 1.45 - 0.035, 1.45, z - 0.035, s * 1.45 + 0.035, 2.35, z + 0.035, P.iron, false);
     }
     this.block(-1.45, 2.3, z1 - 0.08, 1.45, 2.38, z1, brass, false);
-    this.solid(-1.45, 1.45, z1 - 0.1, 1.45, 2.38, z1);
+    this.solid(-1.45, 1.45, z1 - 0.1, 1.45, 2.38, z1, true);
     // crates and barrels for cover
     this.block(-1.35, 1.45, 14.0, -0.35, 2.45, 15.0, P.wood);
     this.block(-1.3, 2.45, 14.1, -0.5, 3.15, 14.9, P.darkWood);

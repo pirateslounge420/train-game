@@ -114,17 +114,16 @@ export class ArrowSystem {
       }
     }
 
-    // Tidy up arrows stuck in the ground far behind us.
+    // Tidy up arrows stuck in the ground far behind us (and the player).
+    const backZ = Math.max(train.position.z, player.feetWorld().z);
     for (let i = this.stuck.length - 1; i >= 0; i--) {
       const s = this.stuck[i];
       s.age += dt;
-      if (s.where === 'ground' && (s.mesh.position.z > train.position.z + 300 || s.age > 60)) {
+      if (s.where === 'ground' && (s.mesh.position.z > backZ + 300 || s.age > 90)) {
         this.game.scene.remove(s.mesh);
         this.stuck.splice(i, 1);
       }
     }
-
-    this.collect(player);
   }
 
   // Find the first thing the segment p0->p1 hits.
@@ -151,8 +150,11 @@ export class ArrowSystem {
     }
 
     if (a.owner === 'enemy' && !player.dead) {
+      // Worked out relative to the player's feet, wherever they are.
+      const q0 = p0.clone().sub(player.prevFeet);
+      const q1 = p1.clone().sub(player.feetWorld());
       for (const b of player.hitBoxes()) {
-        const h = segmentBox(r0, r1, b.min, b.max);
+        const h = segmentBox(q0, q1, b.min, b.max);
         if (h) consider({ t: h.t, type: 'player', head: b.head });
       }
     }
@@ -184,8 +186,7 @@ export class ArrowSystem {
       this.stuck.push({ mesh: a.mesh, where: 'ground', age: 0 });
     } else if (hit.type === 'player') {
       scene.remove(a.mesh);
-      const dmg = hit.head ? CONFIG.damage.playerHead : CONFIG.damage.playerBody;
-      player.hurt(dmg, hit.head ? 'An arrow to the head.' : 'Shot down by bandits.');
+      player.hitByArrow(a.vel, hit.head);
       hud.hurt(hit.head);
       sound.hurt();
     } else if (hit.type === 'bandit') {
@@ -207,23 +208,37 @@ export class ArrowSystem {
     this.stuck.splice(this.stuck.indexOf(s), 1);
   }
 
-  // Walk up to arrows stuck in the train to pick them up.
-  collect(player) {
-    if (player.dead || player.arrows >= CONFIG.player.maxArrows) return;
+  // Arrows close enough to pull out (stuck in the train, or in the dirt).
+  reachable(player) {
+    const out = [];
+    if (player.dead) return out;
     const centre = player.local.clone();
-    centre.y += 0.9;
-    for (let i = this.stuck.length - 1; i >= 0; i--) {
-      const s = this.stuck[i];
-      if (s.where !== 'train') continue;
+    centre.y += player.height * 0.55;
+    const world = player.feetWorld().setY(player.feetWorld().y + player.height * 0.55);
+    const reach = CONFIG.player.reach;
+    for (const s of this.stuck) {
+      if (s.where === 'body') continue;
       // The middle of the arrow's shaft (the tip is buried).
       const mid = new THREE.Vector3(0, 0, -LENGTH / 2).applyQuaternion(s.mesh.quaternion).add(s.mesh.position);
-      if (mid.distanceTo(centre) < CONFIG.player.pickupRadius) {
-        this.removeStuck(s);
-        player.arrows++;
-        this.game.hud.pickup();
-        this.game.sound.pickup();
-        if (player.arrows >= CONFIG.player.maxArrows) return;
-      }
+      const d = s.where === 'train' ? mid.distanceTo(centre) : mid.distanceTo(world);
+      if (d < reach) out.push(s);
     }
+    return out;
+  }
+
+  // Right click: pull every arrow within reach into the quiver.
+  pull(player) {
+    let n = 0;
+    for (const s of this.reachable(player)) {
+      if (player.arrows >= CONFIG.player.maxArrows) break;
+      this.removeStuck(s);
+      player.arrows++;
+      n++;
+    }
+    if (n) {
+      this.game.hud.pickup(n);
+      this.game.sound.pickup();
+    }
+    return n;
   }
 }

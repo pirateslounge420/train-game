@@ -4,9 +4,11 @@ import { Input } from './core/input.js';
 import { createSky, SKY } from './world/sky.js';
 import { Terrain } from './world/terrain.js';
 import { Smoke } from './world/smoke.js';
+import { Stops } from './world/stops.js';
+import { Conductor } from './train/conductor.js';
 import { Train } from './train/train.js';
 import { Player } from './player/player.js';
-import { Bow } from './combat/bow.js';
+import { Inventory } from './items/inventory.js';
 import { ArrowSystem } from './combat/arrows.js';
 import { BanditManager } from './enemies/bandits.js';
 import { Hud } from './ui/hud.js';
@@ -40,14 +42,18 @@ const sound = new Sound();
 const hud = new Hud();
 const train = new Train(scene);
 const terrain = new Terrain(scene);
-terrain.update(train.position.z, 99); // build the starting area all at once
+terrain.update(train.position.z, train.position.z, 99); // build the starting area all at once
 const smoke = new Smoke(scene);
-const player = new Player(train);
+const stops = new Stops(scene);
+stops.update(train.position.z, train.position.z);
 
-const game = { scene, camera, train, player, sound, hud, terrain };
+const game = { scene, camera, train, sound, hud, terrain, stops, input };
+const player = new Player(game);
+game.player = player;
+game.conductor = new Conductor(game);
 game.arrows = new ArrowSystem(game);
 game.bandits = new BanditManager(game);
-game.bow = new Bow(game);
+game.inventory = new Inventory(game);
 
 // ---- start / pause / death screens -----------------------------------------
 const overlay = document.getElementById('overlay');
@@ -131,24 +137,62 @@ function frame() {
   render(dt);
 }
 
+// ---- right click: interact ----------------------------------------------------
+// Works out what right click would do right now (for the on-screen prompt),
+// and does it if `act` is set.
+function interact(act) {
+  if (player.dead || player.reel) return '';
+  if (game.inventory.bow.state === 'drawing') return '';
+  // Pull arrows out of the train (or the dirt).
+  const near = game.arrows.reachable(player);
+  if (near.length && player.arrows < CONFIG.player.maxArrows) {
+    if (act) game.arrows.pull(player);
+    return `Right click — pull arrow${near.length > 1 ? `s (${near.length})` : ''}`;
+  }
+  // Talk to the conductor.
+  if (player.aboard) {
+    const c = game.conductor.position;
+    const d = Math.hypot(player.local.x - c.x, player.local.z - c.z);
+    if (d < CONFIG.player.reach + 0.4 && Math.abs(player.local.y - c.y) < 1) {
+      if (act) hud.message(game.conductor.talk());
+      return 'Right click — talk to the conductor';
+    }
+  }
+  // Climb back aboard a stopped (or crawling) train.
+  if (player.offTrain && train.speed < 4 && player.distanceToTrain() < CONFIG.player.reach) {
+    if (act) player.climbAboard();
+    return 'Right click — climb aboard';
+  }
+  return '';
+}
+
 function update(dt) {
   time += dt;
   const [mx, my] = input.takeMouseDelta();
   player.look(mx, my);
+  game.conductor.update(dt);
   train.update(dt);
-  terrain.update(train.position.z);
+  // Keep the land (and stops) built around both the train and the player.
+  const pz = player.feetWorld().z;
+  const front = Math.min(train.position.z, pz);
+  const back = Math.max(train.position.z, pz);
+  terrain.update(front, back);
+  stops.update(front, back);
   // Player physics in two half-steps for steadier collisions.
+  player.beginFrame();
   player.update(dt / 2, input);
   player.update(dt / 2, input);
-  player.applyCamera(camera, time);
+  player.applyCamera(camera, time, dt);
   camera.updateMatrixWorld();
-  game.bow.update(dt, input);
+  const interactText = interact(input.took('Mouse2'));
+  game.inventory.update(dt, input);
   game.bandits.update(dt);
   game.arrows.update(dt);
   smoke.update(dt, train);
   player.updateHealth(dt);
   trainSounds(dt);
-  hud.update(game);
+  hud.update(game, interactText);
+  input.endFrame();
   if (player.dead) showDeath();
 }
 
@@ -161,7 +205,7 @@ function render(dt) {
 
   renderer.clear();
   renderer.render(scene, camera);
-  game.bow.render(renderer, camera, dt);
+  game.inventory.render(renderer, camera, dt);
 }
 
 addEventListener('resize', () => {

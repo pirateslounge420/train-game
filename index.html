@@ -15,11 +15,16 @@
       <div id="crosshair"></div>
       <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
       <div id="callout"></div>
+      <div id="alert"></div>
       <div id="feed"></div>
       <div id="prompt"></div>
       <div id="health">
         <div class="label">HEALTH</div>
         <div id="health-bar"><div id="health-fill"></div></div>
+      </div>
+      <div id="items">
+        <div class="slot"><span class="key">1</span>Bow</div>
+        <div class="slot"><span class="key">2</span>Hook</div>
       </div>
       <div id="quiver">
         <div class="label">ARROWS</div>
@@ -31,18 +36,19 @@
     <div id="overlay">
       <div class="card">
         <h1 id="overlay-title">Train Game</h1>
-        <p id="overlay-text">Bandits are riding up on the train. Keep her running.</p>
+        <p id="overlay-text">Bandits are riding up on the train. The conductor drives — you keep them off her.</p>
         <table class="controls">
           <tr><td>Mouse</td><td>Look around</td></tr>
-          <tr><td>W A S D</td><td>Walk (Shift to run)</td></tr>
+          <tr><td>W A S D</td><td>Move</td></tr>
           <tr><td>Space</td><td>Jump</td></tr>
+          <tr><td>Shift</td><td>Crouch (duck behind railings and cab walls)</td></tr>
+          <tr><td>Left mouse</td><td>Use item — hold to draw the bow, release to shoot; click to fire the hook</td></tr>
+          <tr><td>Right mouse</td><td>Interact — pull arrows, talk, climb aboard</td></tr>
+          <tr><td>Mouse wheel / 1 2</td><td>Switch item (Bow / Hook)</td></tr>
           <tr><td>W at a ladder</td><td>Climb (S to go down)</td></tr>
-          <tr><td>Hold left mouse</td><td>Draw the bow — longer = stronger</td></tr>
-          <tr><td>Release</td><td>Loose the arrow</td></tr>
-          <tr><td>Right mouse</td><td>Cancel the draw</td></tr>
           <tr><td>Esc</td><td>Pause</td></tr>
         </table>
-        <p class="tip">Walk over arrows stuck in the train to pick them up. Aim for the head.</p>
+        <p class="tip">Knocked off? Scroll to the hook and fire it at the train — fast.</p>
         <div id="overlay-button">Click to start riding</div>
       </div>
     </div>

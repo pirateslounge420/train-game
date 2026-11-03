@@ -99,6 +99,40 @@ export class Sound {
   chuff(strength = 1) {
     this.noise(0.16, 260, 0.7, 0.13 * strength, 'lowpass');
   }
+  // Thrown off the train.
+  whoosh() {
+    this.noise(0.6, 900, 0.8, 0.45);
+    this.tone(320, 0.5, 0.12, 'sine', 120);
+  }
+  // Landing on the ground.
+  thud(strength = 1) {
+    this.noise(0.25, 160, 0.9, 0.6 * strength, 'lowpass');
+    this.tone(70, 0.2, 0.4 * strength, 'sine', 40);
+  }
+  hookFire() {
+    this.noise(0.12, 1200, 1.2, 0.35);
+    this.tone(220, 0.15, 0.2, 'triangle', 90);
+    this.noise(0.5, 3200, 2, 0.06, 'bandpass', 0.05); // rope paying out
+  }
+  latch() {
+    this.tone(900, 0.06, 0.25, 'square');
+    this.tone(1400, 0.12, 0.15, 'triangle', null, 0.03);
+    this.noise(0.6, 2400, 1.5, 0.12, 'bandpass', 0.05); // reeling in
+  }
+  swap() {
+    this.noise(0.06, 1400, 2, 0.12);
+  }
+  shovel() {
+    this.noise(0.18, 700, 1, 0.12, 'lowpass');
+    this.noise(0.3, 260, 0.8, 0.1, 'lowpass', 0.12);
+  }
+  whistle() {
+    if (!this.ctx) return;
+    for (const [f, d] of [[466, 0], [554, 0], [698, 0]]) {
+      this.tone(f, 1.1, 0.07, 'sawtooth', f * 0.97, d);
+    }
+    this.noise(1.1, 1800, 1, 0.08, 'bandpass');
+  }
   clack() {
     this.noise(0.04, 2500, 3, 0.07);
     this.tone(240, 0.04, 0.05, 'square');

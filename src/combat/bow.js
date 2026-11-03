@@ -6,25 +6,36 @@ import { lerp, placeBetween } from '../core/math.js';
 const B = CONFIG.bow;
 
 // The bow you hold. Hold the left mouse button to draw (power builds up to
-// full draw in ~0.55 s), let go to loose the arrow. Right-click cancels.
+// full draw in ~0.55 s), let go to loose the arrow. Right-click while drawing
+// lets the string down without wasting the arrow.
 //
-// The bow is drawn in its own little scene on top of the world so it
-// never pokes through walls.
+// The model lives in the inventory's viewmodel scene (drawn on top of the
+// world so it never pokes through walls).
 export class Bow {
-  constructor(game) {
+  constructor(game, scene) {
     this.game = game;
+    this.name = 'Bow';
     this.state = 'ready'; // ready | drawing | reloading
     this.draw = 0; // 0..1
     this.shown = 0; // smoothed draw for animation
     this.reload = 0;
-
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(CONFIG.view.fov, 1, 0.01, 10);
-    this.scene.add(new THREE.HemisphereLight(0xfff1dc, 0x6b4a30, 1.6));
-    const sun = new THREE.DirectionalLight(0xffe2b8, 1.6);
-    sun.position.set(0.5, 1, 0.3);
-    this.scene.add(sun);
+    this.scene = scene;
     this.buildModel();
+  }
+
+  get busy() {
+    return this.state === 'drawing';
+  }
+
+  cancel() {
+    if (this.state === 'drawing') this.state = 'ready';
+    this.draw = 0;
+  }
+
+  // How far the view zooms in (0..1).
+  get zoom() {
+    const d = this.shown;
+    return d * d * (3 - 2 * d);
   }
 
   buildModel() {
@@ -58,16 +69,17 @@ export class Bow {
     this.root.add(this.arrow);
   }
 
-  update(dt, input) {
+  update(dt, input, active) {
     const { player, arrows, train, camera, sound } = this.game;
+    if (this.state === 'reloading') {
+      this.reload -= dt;
+      if (this.reload <= 0) this.state = 'ready';
+    }
+    if (!active) return;
     if (player.dead) {
       this.state = 'ready';
       this.draw = 0;
       return;
-    }
-    if (this.state === 'reloading') {
-      this.reload -= dt;
-      if (this.reload <= 0) this.state = 'ready';
     }
     if (this.state === 'ready' && input.mouse[0] && player.arrows > 0) {
       this.state = 'drawing';
@@ -105,24 +117,18 @@ export class Bow {
     this.reload = B.reloadTime;
   }
 
-  // Animate the bow model and the zoom.
-  render(renderer, mainCamera, dt) {
+  // Animate the bow model. `lower` (0..1) drops it out of view when switching.
+  animate(dt, lower) {
+    this.root.visible = lower < 0.99;
     const target = this.state === 'drawing' ? this.draw : 0;
     this.shown += (target - this.shown) * Math.min(1, dt * (target > this.shown ? 30 : 12));
     const d = this.shown;
-    const e = d * d * (3 - 2 * d);
-
-    // Zoom in a little as you draw.
-    mainCamera.fov = lerp(CONFIG.view.fov, CONFIG.view.drawFov, e);
-    mainCamera.updateProjectionMatrix();
-    this.camera.fov = mainCamera.fov;
-    this.camera.aspect = mainCamera.aspect;
-    this.camera.updateProjectionMatrix();
+    const e = this.zoom;
 
     // Bow position: low and to the side at rest, centred when drawn.
     const sway = Math.sin(performance.now() * 0.002) * 0.004 * (1 - d);
-    this.root.position.set(lerp(0.24, 0.02, e), lerp(-0.25, -0.035, e) + sway, lerp(0.02, 0, e));
-    this.root.rotation.set(lerp(0.15, 0, e), lerp(0.3, 0, e), lerp(-0.45, -0.15, e));
+    this.root.position.set(lerp(0.24, 0.02, e), lerp(-0.25, -0.035, e) + sway - lower * 0.45, lerp(0.02, 0, e));
+    this.root.rotation.set(lerp(0.15, 0, e) - lower * 0.6, lerp(0.3, 0, e), lerp(-0.45, -0.15, e));
 
     // Grip is at z = -0.6; tips come back a bit as the limbs bend.
     const gz = -0.6;
@@ -149,8 +155,5 @@ export class Bow {
     this.arrow.visible = hasArrow;
     const rise = this.state === 'reloading' ? Math.min(1, this.reload / B.reloadTime) : 0;
     this.arrow.position.set(0.012, -rise * 0.25, nockZ);
-
-    renderer.clearDepth();
-    renderer.render(this.scene, this.camera);
   }
 }

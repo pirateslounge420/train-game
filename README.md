@@ -39,51 +39,75 @@ server above.)
 | --- | --- |
 | Click the screen | Start / resume (captures the mouse) |
 | Mouse | Look around |
-| W A S D | Walk (hold **Shift** to run) |
-| Space | Jump |
+| W A S D | Move |
+| Space | Jump (a small hop) |
+| Shift | Crouch: lowers your view so you can duck behind the railings and cab walls, and you get shoved around less when hit |
 | W while facing a ladder | Climb up (S to climb down, Space to let go) |
-| Hold left mouse | Draw the bow: the longer you hold, the stronger the shot (full draw in about half a second) |
-| Release left mouse | Shoot |
-| Right mouse (while drawing) | Cancel the shot without wasting the arrow |
+| Left mouse | Use the item in your hands. **Bow:** hold to draw (full draw in about half a second), release to shoot. **Hook:** click to fire |
+| Right mouse | Interact: pull out arrows within reach, talk to the conductor, climb back aboard at a stop. While drawing the bow it lets the string down instead |
+| Mouse wheel (or 1 / 2) | Switch between the bow and the grappling hook |
 | Esc | Pause |
 
 ## What's in this prototype
 
-- **Endless train ride.** The train runs at a steady ~34 mph along a
-  straight track. Desert ground, cacti, rocks, mesas and telegraph poles are
-  built ahead of you and cleared away behind, so the land never runs out.
+- **Endless train ride.** Desert ground, cacti, rocks, mesas and telegraph
+  poles are built ahead of you and cleared away behind, so the land never
+  runs out.
+- **The conductor drives.** An old engineer rides in the cab. He drives the
+  train and shovels coal into the firebox (watch it flare up). You never
+  touch the throttle or the fuel. He starts at ~34 mph and opens her up a
+  little more every mile, but the train can never go faster than
+  **200 mph**. Walk up to him and right-click to chat (he'll tell you the
+  speed and the next stop).
 - **The train.** A steam locomotive with a cowcatcher, big box headlamp, brass
   bands and domes, a balloon smokestack with smoke, a riveted cab, six
-  cylinders (three stacked on each side) and a steam-turbine casing along the
-  boiler. Connecting rods visibly drive the big red driving wheels. Behind it
-  are a coal tender, a boxcar and a flatcar.
+  cylinders and a steam-turbine casing. Connecting rods visibly drive the big
+  red driving wheels. Behind it are a coal tender, a boxcar (now with a roof
+  railing to hide behind) and a flatcar.
 - **Riding on it.** You start on the flatcar at the back. You can walk the
   whole train, climb the ladders onto the boxcar roof, drop onto the coal
   tender, get into the cab, and walk the running boards beside the boiler up
-  to the front. You move with the train. If you fall off, you die.
-- **Bow and arrow.** Arrows fly at real-life speed (up to about 64 m/s, or
-  210 ft/s) with real gravity, so you can see them arc and drop at range.
-  They also keep the train's speed, so shooting forward, backward or sideways
-  all behave differently. No aim assist and no aiming line: it's just you.
-  Your arrow count is shown at the bottom right.
-- **Bandits.** Riders gallop up beside the train and shoot arrows at you.
-  More of them show up as you knock them down. Each has four hit zones:
+  to the front.
+- **Bow and arrow.** Arrows fly at real-life speed (up to about 64 m/s) with
+  real gravity, and keep the train's speed. No aim assist. Right-click arrows
+  stuck in the train (or in the dirt) to pull them back into your quiver (up
+  to 30).
+- **Getting hit.** An arrow does damage *and* staggers you: a shove plus a
+  jolt to your view. Crouching cuts the stagger roughly in half. A strong
+  enough hit while you're on a roof (boxcar, cab, tender) or standing near
+  the edge can **knock you clean off the train**, over the railings.
+- **Grappling hook: the clutch save.** If you're knocked off, scroll to the
+  hook straight away and fire it at the train. The crosshair turns into a
+  ring that lights up gold when the hook would bite. If it connects, it reels
+  you back aboard. You've got a few seconds while you're in the air and
+  skidding through the dirt before the train is out of range (26 m). A miss
+  comes back and you can fire again if the train's still close. (You can
+  also use the hook to haul yourself around the train.)
+- **Left behind.** If you miss, the train does **not** stop. The conductor
+  carries on to the next stop on the line and waits there for you. Walk up
+  the tracks (bandits will come for you on foot) and right-click next to the
+  train to climb aboard. Once you're on, he blows the whistle and pulls out.
+- **Stops.** Real towns aren't built yet, so there are placeholder stops
+  every 450 m: a wooden platform, a depot shack, a water tower and a name
+  board. The train rolls straight through them unless it's waiting for you.
+- **Bandits.** Riders gallop up beside the train (or beside you, if you're on
+  foot) and shoot arrows at you. More of them show up as you knock them down.
+  Each has four hit zones:
   - **Rider's head:** instant kill, a big gold "HEADSHOT!" and a ding.
   - **Rider's body:** two hits kill him, and any hit may knock him off his horse.
   - **Horse's head:** kills the horse and throws the rider.
   - **Horse's body:** two hits bring the horse down; a hit may make it buck the rider off.
 - **Health.** You have a health bar at the bottom left. It refills very
   slowly once you haven't been hit for a few seconds. Head hits hurt a lot
-  more than body hits. Bandits aim where you're standing, so keep moving and
-  use the crates for cover.
-- **Collecting arrows.** Bandit arrows (red feathers) and your own (white)
-  that hit the train stay stuck in it. Walk up to one to pull it out and add
-  it to your quiver (up to 30).
+  more than body hits, and hitting the dirt after being thrown off hurts a
+  little. **The run only ends when your health reaches zero.** Falling off
+  the train no longer kills you.
 
 ## Tweaking the game
 
-Almost every number (train speed, arrow speed, draw time, damage, bandit
-accuracy, health regen and so on) is in [`src/config.js`](src/config.js),
+Almost every number (train speed and top speed, stop spacing, walk speed,
+stagger and knock-off strength, grapple range, arrow speed, draw time,
+damage, bandit accuracy, health regen and so on) is in [`src/config.js`](src/config.js),
 with notes. Change a number, save, and refresh the browser.
 
 ## How the code is organised
@@ -96,10 +120,14 @@ src/
   main.js             starts everything and runs the game loop
   config.js           all the tunable numbers
   core/               input, maths helpers, shared materials
-  world/              sky, endless terrain, smoke
+  world/              sky, endless terrain, smoke, placeholder stops
   train/train.js      the train model, its moving parts and walkable surfaces
-  player/player.js    walking, jumping, ladders, health
-  combat/bow.js       drawing and shooting, and the bow you see in your hands
+  train/conductor.js  the conductor: drives, stokes the fire, stops for you
+  player/player.js    walking, crouching, jumping, ladders, stagger,
+                      being knocked off, being reeled in, health
+  items/inventory.js  switching items, and the item you see in your hands
+  items/grapple.js    the grappling hook
+  combat/bow.js       drawing and shooting, and the bow model
   combat/arrows.js    arrow flight, hits, sticking, and picking them up
   enemies/bandits.js  horse riders: riding, shooting, hit zones, falling off
   ui/hud.js           health, arrows, hit markers, messages
@@ -112,6 +140,6 @@ the game (`game`, `startGame()`, `step(frames)`).
 
 ## Not in this prototype (planned for later)
 
-Towns and regions, folklore monsters and bosses, the day-night cycle and
-dangerous nights, AI companions, coal shoveling, steam boost and train speed
-changes, curves in the track.
+Real towns and regions (the stops are placeholders), folklore monsters and
+bosses, the day-night cycle and dangerous nights, AI companions, steam
+boost, curves in the track.
