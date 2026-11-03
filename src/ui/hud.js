@@ -50,6 +50,7 @@ export class Hud {
     // phone buttons
     this.grab = $('grab');
     this.draw = $('draw');
+    this.crouch = $('crouch');
     this.drawn = $('drawn');
   }
 
@@ -107,12 +108,14 @@ export class Hud {
       if (this.bannerT <= 0) this.banner_.classList.remove('on');
     }
     this.draw.classList.toggle('on', !!p.bow?.drawing);
-    this.grab.classList.toggle('ok', game.arrows.reachableCount(p) > 0 || !!game.hats.looked(p, game.camera));
+    this.grab.classList.toggle('ok', game.arrows.reachableCount(p) > 0 || !!game.hats.looked(p, game.camera) || game.conductorNear() || p.canClimb());
+    this.crouch.classList.toggle('on', p.crouch);
     let prompt = '';
     if (this.hintT > 0) {
       this.hintT -= dt;
       prompt = this.hintText;
-    } else if (p.onLadder) prompt = TOUCH ? 'Climbing: stick up or down' : 'Climbing: W up, S down';
+    } else if (p.onFoot) prompt = game.footNote();
+    else if (p.onLadder) prompt = TOUCH ? 'Climbing: stick up or down' : 'Climbing: W up, S down';
     else if (p.arrows === 0) prompt = 'Out of arrows! Grab the ones stuck in the train.';
     if (prompt !== this.prompt.textContent) this.prompt.textContent = prompt;
   }

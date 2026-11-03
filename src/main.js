@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { Input, TOUCH } from './core/input.js';
 import { Sky, DAY_LEN, START_TIME } from './world/sky.js';
-import { SEED, TOWNS, biomeOf, biomeParams, regionStart, tunnelNear } from './world/line.js';
+import { SEED, TOWNS, biomeOf, biomeParams, regionStart, trackNear, tunnelNear } from './world/line.js';
 import { Terrain } from './world/terrain.js';
 import { Smoke } from './world/smoke.js';
 import { Train, SURGES } from './train/train.js';
+import { Conductor } from './train/conductor.js';
 import { Player } from './player/player.js';
 import { Bow } from './combat/bow.js';
 import { ArrowSystem } from './combat/arrows.js';
@@ -64,31 +65,40 @@ const game = {
   // isn't running, near a town or before a tunnel...
   ridersMaySpawn() {
     const s = train.distance;
-    if (train.state !== 'run') return false;
-    if (regionStart[train.nextTown] - s < 260 || s - regionStart[train.region] < 110) return false;
+    if (train.state !== 'run' && !player.onFoot) return false;
+    if (!player.onFoot && (regionStart[train.nextTown] - s < 260 || s - regionStart[train.region] < 110)) return false;
     return !tunnelNear(s + 300, 0) && !tunnelNear(s, 60);
   },
   // ...and those already out peel off before a tunnel or a stop. A surge
   // doesn't turn them: they ride flat out and the train outruns them (§K).
   ridersMayStay() {
     const s = train.distance;
-    return train.state === 'run' && !tunnelNear(s + 140, 0) && !tunnelNear(s, 30);
+    return (train.state === 'run' || player.onFoot) && !tunnelNear(s + 140, 0) && !tunnelNear(s, 30);
   },
 };
 
 // Towns: rest, arrows back up to 15, then on to the next country (§G, §X).
 train.onArrive = (i) => {
   game.riders.rest();
+  // Off the train, the rest waits till you're back aboard (§S).
+  if (player.onFoot) {
+    player.reward = true;
+    return hud.banner(TOWNS[i % TOWNS.length], `The train is waiting · next: ${biomeOf(i).name}`);
+  }
+  hud.banner(TOWNS[i % TOWNS.length], `Rested · ${rest()}next: ${biomeOf(i).name}`);
+};
+function rest() {
   player.health = CONFIG.player.maxHealth;
   const refill = Math.max(0, CONFIG.player.townArrows - player.arrows);
   player.arrows += refill;
-  hud.banner(TOWNS[i % TOWNS.length], `Rested · ${refill ? `+${refill} arrows · ` : ''}next: ${biomeOf(i).name}`);
-};
+  return refill ? `+${refill} arrows · ` : '';
+}
 train.onDepart = () => sound.whistle();
 // Tap the time in the stats panel: jump three hours (for testing, §R).
 hud.onTimeTap = () => (dayT += DAY_LEN / 8);
 let tunnelBannered = -1;
 const HEADLAMP = 300; // candela-ish; three.js lights fall off with distance
+const conductor = new Conductor(train);
 game.arrows = new ArrowSystem(game);
 game.riders = new Riders(game, RIGS);
 game.hats = new Hats(game);
@@ -144,8 +154,53 @@ if (location.search.includes('debug')) {
   window.setTime = (h) => (dayT = (h / 24) * DAY_LEN);
 }
 
-// Grab: the racked hat you're looking at comes first, then a stuck arrow (§T).
+// Off the train (§S): the conductor pulls up once you're out of reach of it.
+const LEFT_BEHIND = 28; // metres from the train
+player.onThrown = () => {
+  input.crouchToggle = false;
+  sound.thrown();
+  hud.banner('Thrown off!', 'Follow the tracks. The train will wait');
+};
+player.onLand = () => sound.land();
+function offTrain() {
+  train.held = player.onFoot;
+  if (player.onFoot && !train.waitFor && train.nearestCar(player.local).d > LEFT_BEHIND) {
+    train.planWait();
+    hud.message(`Conductor: "I'll wait for you at ${train.stopName()}!"`);
+  }
+}
+function boardTrain() {
+  player.board();
+  train.allAboard();
+  sound.land();
+  hud.message('Conductor: "All aboard!"');
+  if (player.reward) {
+    player.reward = false;
+    hud.message(`Rested · ${rest()}`.replace(/ · $/, ''));
+  }
+}
+// What to do now, while you're on foot.
+game.footNote = () => {
+  if (player.canClimb()) return TOUCH ? 'Grab to climb aboard' : 'Right click (Grab) to climb aboard';
+  if (!train.waitFor) return 'Left behind. Follow the tracks';
+  const left = Math.max(0, Math.round(train.stopAt - 6.6 - trackNear(player.local.x, player.local.z).s));
+  return `The train ${train.state === 'stop' ? 'is waiting' : 'will wait'} at ${train.stopName()} · ${left} m up the line`;
+};
+// At the front of the tender you can have a word with the conductor.
+game.conductorNear = () => player.car.name === 'tender' && player.local.z - player.car.zc < -2.2;
+
+// Grab: climb aboard if you're on foot; otherwise the racked hat you're
+// looking at comes first, then a stuck arrow, then the conductor (§T, §S).
 function grab(tap) {
+  if (player.onFoot && !tap) {
+    if (player.canClimb()) return boardTrain();
+    if (!game.arrows.reachableCount(player)) return hud.hint(train.speed > 0.5 ? 'The train is still moving' : 'Get right up to the train to climb aboard');
+  }
+  if (!tap && game.conductorNear() && !game.arrows.reachableCount(player)) {
+    hud.message(`Conductor: "${conductor.say()}"`);
+    const next = regionStart[train.nextTown] - train.distance;
+    return hud.hint(`${Math.round(train.speed * 2.237)} mph · next stop ${TOWNS[train.nextTown % TOWNS.length]} in ${Math.max(0, Math.round(next))} m`);
+  }
   const hat = game.hats.looked(player, camera);
   if (hat) game.hats.wear(player, hat, camera);
   else if (tap) game.arrows.tapGrab(player, camera, tap.x, tap.y);
@@ -155,6 +210,7 @@ function grab(tap) {
 // The steam surge (§K): fired from the tender, two a stretch (§Y).
 function surge() {
   if (player.dead) return;
+  if (player.onFoot) return hud.hint('You have to be aboard to surge');
   if (player.car.name !== 'tender') return hud.hint('Surge from the tender: forward along the roofs, two cars up');
   const why = train.surge();
   if (why) return hud.hint(why);
@@ -193,8 +249,6 @@ function trainSounds(dt) {
     sound.clack();
     setTimeout(() => sound.clack(), 100);
   }
-  // The firebox flickers.
-  train.firebox.emissiveIntensity = 0.9 + Math.sin(time * 13) * 0.12;
 }
 
 // ---- main loop ----------------------------------------------------------------
@@ -214,8 +268,10 @@ function update(dt) {
   const [mx, my] = input.takeMouseDelta();
   player.look(mx, my);
   dayT += dt;
+  offTrain();
   train.update(dt);
-  terrain.update(train.distance);
+  terrain.update(train.distance, 3, player.onFoot ? trackNear(player.local.x, player.local.z).s : null);
+  conductor.update(dt, time);
   const tun = tunnelNear(train.distance + 60, 0);
   if (tun && tunnelBannered !== tun.s0) {
     tunnelBannered = tun.s0;

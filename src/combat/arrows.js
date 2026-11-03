@@ -234,7 +234,7 @@ export class ArrowSystem {
       const eye = player.eyeWorld(_e);
       const p0s = _p0s.copy(p0).addScaledVector(player.worldVelocity(_pv), dt);
       const th = segSphere(p0s, p1, eye, HEAD_R);
-      const tb = segSphere(p0s, p1, _c2.copy(eye).setY(eye.y - 0.72), BODY_R);
+      const tb = segSphere(p0s, p1, _c2.copy(eye).setY(eye.y - (player.crouch ? 0.36 : 0.72)), player.crouch ? 0.36 : BODY_R);
       if (th >= 0) consider({ t: th, type: 'player', head: true });
       if (tb >= 0) consider({ t: tb, type: 'player', head: false });
     }
@@ -271,6 +271,7 @@ export class ArrowSystem {
       player.shake = Math.max(player.shake, 0.5);
       hud.hurt(hit.head);
       sound.hurt();
+      player.stagger(a.vel, hit.head);
     } else if (hit.type === 'rider') {
       // Stick into the part it hit, so it flies off with it.
       a.mesh.position.copy(hit.point).addScaledVector(dir, EMBED);

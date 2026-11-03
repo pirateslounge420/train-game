@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { facet, painted, plain, tiledBox, tiledCyl } from '../core/materials.js';
 import { texDetail, texIron, texPlanks } from '../core/textures.js';
 import { RAIL_TOP } from '../world/terrain.js';
-import { trackAt, forwardAt, rightAt, regionAt, regionSpeed, regionStart, ensureRegions } from '../world/line.js';
+import { TOWNS, trackAt, forwardAt, rightAt, regionAt, regionSpeed, regionStart, ensureRegions, nextHaltAfter } from '../world/line.js';
 
 const _up = new THREE.Vector3(0, 1, 0);
 const _tp = { x: 0, z: 0, th: 0 };
@@ -35,6 +35,8 @@ const CARS = [
   { name: 'caboose', zc: 0, z1: Infinity },
 ];
 const BRAKE = 2.4; // m/s² when pulling into a town
+const HARD_BRAKE = 4.5; // m/s² when he's stopping to wait for someone (§S)
+const HALT_STOP = 1.5; // seconds at a water stop, once everyone's aboard
 const TOWN_STOP = 6; // seconds at each town (§G)
 const MAX_SPEED = 200 * 0.44704; // never faster than 200 mph (§K)
 // The surge (§K, §Y): two a stretch, each +26 m/s on top of the last, reached
@@ -43,6 +45,7 @@ export const SURGES = 2;
 const SURGE_BOOST = 26, SURGE_ACCEL = 6, SURGE_BLEED = 1.5;
 const DRIVER_R = 1.22, PIN_R = 0.55; // eight-foot drivers (§N)
 
+const _near = new THREE.Vector3();
 const C = {
   red: 0x7a2418, iron: 0x24201d, iron2: 0x36322e, brass: 0xc9a24a, wood2: 0x4a6a3a, roof: 0x2a2622,
   cab: 0x8a3a26, cabDark: 0x4e2216, rail: 0x2e2a28, deck: 0x5a4632,
@@ -69,6 +72,11 @@ export class Train {
     this.cruise = regionSpeed(0);
     this.boost = 0;
     this.surges = SURGES;
+    this.waitFor = false; // pulling up to wait for someone left behind (§S)
+    this.held = false; // someone's off the train, so no pulling out
+    this.stopAt = 0;
+    this.stopKind = 'town'; // the next stop: town | halt
+    this.stopHere = 'town'; // the stop we're at
     this.state = 'stop'; // run | brake | stop
     this.stopT = 2.5;
     this.nextTown = 0; // the town we're heading for (0: we start in it)
@@ -162,6 +170,46 @@ export class Train {
     }
   }
 
+  // Someone's been left behind: carry on to the first stop he can pull up at,
+  // town or water stop, and wait there (§S; reference planWait).
+  planWait() {
+    this.waitFor = true;
+    const s = this.d + (this.speed * this.speed) / (2 * HARD_BRAKE) + 8;
+    const town = regionStart[this.nextTown], halt = nextHaltAfter(s);
+    if (this.state !== 'run' || (town >= this.d && town <= halt)) {
+      this.stopAt = town;
+      this.stopKind = 'town';
+    } else {
+      this.stopAt = halt;
+      this.stopKind = 'halt';
+    }
+  }
+
+  // They're back aboard: a moment to settle, then away.
+  allAboard() {
+    if (this.state === 'stop') this.stopT = Math.min(this.stopT, 1.6);
+    this.waitFor = false;
+  }
+
+  stopName() {
+    return this.stopKind === 'town' ? TOWNS[this.nextTown % TOWNS.length] : 'the water stop';
+  }
+
+  // The car nearest a point in the world, and how far off it is.
+  nearestCar(p) {
+    let best = null;
+    for (const car of this.cars) {
+      this.toLocal(car, p, _near);
+      if (car.reach === undefined) {
+        car.reach = 0;
+        for (const c of car.colliders) if (!c.ghost) car.reach = Math.max(car.reach, Math.abs(c.min.z - car.zc), Math.abs(c.max.z - car.zc));
+      }
+      const d = Math.hypot(Math.max(0, Math.abs(_near.x) - 1.5), Math.max(0, Math.abs(_near.z - car.zc) - car.reach));
+      if (!best || d < best.d) best = { car, d };
+    }
+    return best;
+  }
+
   // Open her up (§K). Returns why not, or '' when it fired.
   surge() {
     if (this.state !== 'run') return "Wait till she's rolling";
@@ -178,36 +226,45 @@ export class Train {
     this.region = regionAt(this.d);
     ensureRegions(this.region + 2);
     this.cruise = regionSpeed(this.region);
-    const townD = regionStart[this.nextTown];
+    if (!this.waitFor) {
+      this.stopAt = regionStart[this.nextTown];
+      this.stopKind = 'town';
+    }
+    const stopD = this.stopAt, brake = this.waitFor ? HARD_BRAKE : BRAKE;
     this.boost = Math.max(0, this.boost - SURGE_BLEED * dt);
     if (this.state === 'run') {
       const target = Math.min(MAX_SPEED, this.cruise + this.boost);
       const acc = this.boost > 0 ? SURGE_ACCEL : 1.5;
       if (this.speed < target) this.speed = Math.min(target, this.speed + acc * dt);
       else this.speed = Math.max(target, this.speed - 2.5 * dt);
-      const rem = townD - this.d;
-      if (rem < (this.speed * this.speed) / (2 * BRAKE) + 6) {
+      const rem = stopD - this.d;
+      if (rem < (this.speed * this.speed) / (2 * brake) + 6) {
         this.state = 'brake';
         this.boost = 0;
       }
     }
     if (this.state === 'brake') {
-      const rem = townD - this.d;
-      this.speed = Math.max(0, Math.min(this.speed, Math.sqrt(Math.max(0, 2 * BRAKE * rem))));
+      const rem = stopD - this.d;
+      this.speed = Math.max(0, Math.min(this.speed, Math.sqrt(Math.max(0, 2 * brake * rem))));
       if (rem <= 0.25 || (this.speed < 0.2 && rem < 4)) {
         this.speed = 0;
-        this.d = townD;
+        this.d = stopD;
         this.state = 'stop';
-        this.stopT = TOWN_STOP;
-        this.surges = SURGES; // towns restock them (§Y)
-        this.onArrive?.(this.nextTown);
+        this.stopHere = this.stopKind;
+        if (this.stopKind === 'town') {
+          this.stopT = TOWN_STOP;
+          this.surges = SURGES; // towns restock them (§Y)
+          this.onArrive?.(this.nextTown);
+        } else this.stopT = HALT_STOP;
       }
     }
     if (this.state === 'stop') {
-      this.stopT -= dt;
+      // Nobody gets left: the clock only runs with everyone aboard (§S).
+      if (!this.held) this.stopT -= dt;
       if (this.stopT <= 0) {
         this.state = 'run';
-        this.nextTown++;
+        if (this.stopHere === 'town') this.nextTown++;
+        this.stopHere = 'town';
         this.onDepart?.();
       }
     }

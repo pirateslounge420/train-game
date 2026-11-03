@@ -77,6 +77,14 @@ export class Sound {
     this.noise(0.09, 420, 2, v);
     this.tone(160, 0.08, v * 0.4, 'square', 80);
   }
+  // Thrown over the side, and hitting the dirt.
+  thrown() {
+    this.noise(0.4, 500, 1, 0.25, 'lowpass');
+  }
+  land() {
+    this.noise(0.14, 160, 1, 0.35, 'lowpass');
+  }
+
   hurt() {
     this.tone(90, 0.35, 0.5, 'sawtooth', 40);
     this.noise(0.2, 300, 1, 0.5, 'lowpass');

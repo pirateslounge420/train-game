@@ -29,6 +29,7 @@ export class Input {
     this.surgeReq = false;
     this.unitsReq = false;
     this.statsTouch = false;
+    this.crouchToggle = false;
     this.cancelReq = false;
     this.taps = []; // screen points tapped this frame (to grab a stuck arrow)
 
@@ -208,6 +209,10 @@ export class Input {
       e.preventDefault();
       this.unitsReq = true;
     });
+    $('crouch').addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      this.crouchToggle = !this.crouchToggle;
+    });
     const stats = $('statsbtn');
     stats.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -224,6 +229,11 @@ export class Input {
     try {
       this.canvas.requestPointerLock()?.catch?.(() => {});
     } catch (err) {}
+  }
+
+  // Shift, or the Crouch button, which stays down until tapped again (§S).
+  crouchHeld() {
+    return this.crouchToggle || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
   }
 
   // Tab, or the Stats button (§I).

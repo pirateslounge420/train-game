@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { facet, painted, plain, tiledBox, tiledCyl } from '../core/materials.js';
 import { texBark, texDetail, texPlanks, texStone } from '../core/textures.js';
 import {
-  trackAt, trackNear, biomeParams, biomeOf, regionAt, regionStart, ensureRegions, tunnelNear, townNear,
+  haltsIn, trackAt, trackNear, biomeParams, biomeOf, regionAt, regionStart, ensureRegions, tunnelNear, townNear,
   rngFor, vnoise, fbm, smooth, lerp, cellKey, cellOf, TRK_STEP,
 } from './line.js';
 
@@ -326,6 +326,13 @@ function makePiece(k) {
     town.rotation.y = -t.th;
     g.add(town);
   });
+  for (const d of haltsIn(sA, sB)) {
+    const t = trackAt(d);
+    const h = makeHalt();
+    h.position.set(t.x, 0, t.z);
+    h.rotation.y = -t.th;
+    g.add(h);
+  }
   return { group: g, own };
 }
 
@@ -365,6 +372,44 @@ function makeTown(i) {
   return t;
 }
 
+// A water stop: a short platform, a tank on legs with its spout, and a board.
+let haltBoard = null;
+function makeHalt() {
+  if (!haltBoard) {
+    const c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 32;
+    const x = c.getContext('2d');
+    x.fillStyle = '#e8d6a8';
+    x.fillRect(0, 0, 128, 32);
+    x.fillStyle = '#2a1c10';
+    x.font = 'bold 17px Georgia,serif';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillText('WATER STOP', 64, 17);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    haltBoard = new THREE.MeshLambertMaterial({ map: t });
+  }
+  const h = new THREE.Group();
+  box(2.6, 0.55, 16, boards(0x6a5a48), 3.6, 0.27, 0, h);
+  const wt = new THREE.Group();
+  wt.position.set(7.2, 0, -3);
+  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(0.2, 4.6, 0.2, painted(0x4a3626, texBark, 1), x, 2.3, z, wt);
+  cylinder(1.5, 1.5, 2.4, 8, boards(0x6a4a2e), 0, 5.8, 0, wt);
+  cylinder(0.1, 1.8, 1.0, 8, mats.roof, 0, 7.5, 0, wt);
+  const spout = box(0.14, 0.14, 1.6, 0x2a2a2e, -1.1, 5.4, 0, wt);
+  spout.rotation.y = Math.PI / 2;
+  spout.rotation.z = 0.4;
+  h.add(wt);
+  for (const z of [-1.1, 1.1]) box(0.1, 2.3, 0.1, 0x3a2a1c, 4.7, 1.15, z + 5, h);
+  const b = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), haltBoard);
+  b.position.set(4.64, 2.0, 5);
+  b.rotation.y = -Math.PI / 2;
+  h.add(b);
+  return h;
+}
+
 function dispose(c) {
   c.group.parent?.remove(c.group);
   for (const g of c.own) g.dispose();
@@ -383,14 +428,20 @@ export class Terrain {
 
   // Keep the country built from 160 m behind the train to 480 m ahead.
   // `maxBuild` limits new ground squares per frame so the game never stutters.
-  update(s, maxBuild = 3) {
+  // `footS`: where along the line a player left behind is, so their stretch
+  // of country stays built too (§S).
+  update(s, maxBuild = 3, footS = null) {
     const want = new Set(), wantP = new Set();
-    for (let d = s - 160; d <= s + 480; d += 40) {
-      const t = trackAt(d);
-      const cx = Math.floor(t.x / CH), cz = Math.floor(t.z / CH);
-      for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) want.add(cellKey(cx + dx, cz + dz));
+    const ranges = [[s - 160, s + 480]];
+    if (footS !== null) ranges.push([footS - 160, footS + 320]);
+    for (const [a, b] of ranges) {
+      for (let d = a; d <= b; d += 40) {
+        const t = trackAt(Math.max(0, d));
+        const cx = Math.floor(t.x / CH), cz = Math.floor(t.z / CH);
+        for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) want.add(cellKey(cx + dx, cz + dz));
+      }
+      for (let k = Math.floor(a / TP_LEN); k <= Math.floor(b / TP_LEN); k++) wantP.add(k);
     }
-    for (let k = Math.floor((s - 160) / TP_LEN); k <= Math.floor((s + 480) / TP_LEN); k++) wantP.add(k);
     let made = 0;
     for (const key of want) {
       if (this.chunks.has(key)) continue;

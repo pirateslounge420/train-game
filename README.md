@@ -165,6 +165,20 @@ drawing.
   slowly once you haven't been hit for a few seconds. Head hits hurt a lot
   more than body hits. Bandits aim where you're standing, so keep moving and
   use the walls and roof edges for cover.
+- **Crouch** (§S). Hold **Shift**, or tap the **Crouch** button (tap again to
+  stand). You drop below the roof boards and walk at half speed, and hits
+  shove you far less.
+- **Hits and getting thrown off** (§S). An arrow shoves you and jolts the
+  view. A hard hit on a roof, the tender or the edge of the rear platform
+  throws you off the train, unless you're crouched or on a ladder.
+- **On foot** (§S). You skid to a stop, and riders come for you. Once you're
+  28 m from the train the conductor brakes hard for the next water stop or
+  town and waits there as long as it takes. Walk up the line, get right up
+  to the train and press **Grab** to climb aboard. A town's rest waits till
+  you're back on.
+- **The conductor** (§S). He stands in the cab, shovelling, and the fire
+  flares when he feeds it. At the front of the tender, **Grab** has a word
+  with him and tells you the next stop. The surge stays your call.
 - **Collecting arrows.** Bandit arrows (red feathers) and your own (white)
   that hit the train stay stuck in it. Get within reach (3.4 m, nothing in
   the way), look at one and Grab it to add it to your quiver (up to 40).

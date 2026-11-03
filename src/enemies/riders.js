@@ -4,7 +4,7 @@ import { painted, plain, tiledBox, tiledCyl } from '../core/materials.js';
 import { canvasTex, texCloth, texDetail } from '../core/textures.js';
 import { rand } from '../core/math.js';
 import { groundHeight } from '../world/terrain.js';
-import { hash2 } from '../world/line.js';
+import { forwardAt, hash2, rightAt, trackAt, trackNear } from '../world/line.js';
 
 // Riders (§E, §O, §U; ported from reference 0.7).
 //
@@ -141,7 +141,16 @@ export class Riders {
 
   // The train's frame: where it is, which way is forward and right, how fast.
   anchor() {
-    const t = this.game.train;
+    const t = this.game.train, p = this.game.player;
+    if (p.onFoot) {
+      // You're the one they're after: they flank you where you stand (§S).
+      const a = trackAt(trackNear(p.local.x, p.local.z).s);
+      forwardAt(a.th, _F);
+      rightAt(a.th, _R);
+      _P.copy(p.local);
+      _ANV.set(0, 0, 0);
+      return;
+    }
     t.forward(_F);
     t.right(_R);
     _P.copy(t.position);
@@ -252,7 +261,7 @@ export class Riders {
     this.spawnT -= dt;
     if (this.spawnT > 0) return;
     const ri = game.train.region;
-    const maxC = 3 + Math.min(3, Math.floor(ri / 2)) + (game.night() > 0.5 ? 2 : 0); // night: two more (§R)
+    const maxC = (game.player.onFoot ? 2 : 3 + Math.min(3, Math.floor(ri / 2))) + (game.night() > 0.5 ? 2 : 0); // night: two more (§R)
     const alive = this.riders.filter((r) => r.alive).length;
     if (alive >= maxC) {
       this.spawnT = 2;

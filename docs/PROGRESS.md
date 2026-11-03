@@ -1,5 +1,16 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (evening) — Claude Code: §Z.1 step 9, the conductor, crouch and knock-off (§S); end of the port
+- Mike confirmed §S's conductor, crouch and knock-off, without the hook, which §X replaced with the magnet hand (§Z.6). **Claude (chat): §S can be locked with that.**
+- Crouch: Shift, or a Crouch button that stays down until tapped again. Eye 0.72 m, half speed, no sprint or jump, and your hit ball shrinks as in the reference.
+- Hits (`player.stagger`): a shove, a short stagger and a camera jolt; a body hit is 0.7× a head hit, and crouching takes that to 0.45×. A hard hit on a roof or the tender, or at the edge of the rear platform, throws you off. Rates on a roof, from 2,000 rolls of the reference's numbers: 90 % of head hits, 20 % of body hits, none crouched.
+- On foot: the reference's skid and walk, in the world rather than a car's frame. Riders flank you (at most two, plus night's two) and the country stays built around you. At 28 m from the train the conductor brakes at 4.5 m/s² for the next water stop or town (new `makeHalt`, sidings every 450 m) and waits with no time limit. Grab within 2.4 m of a stopped train boards you: rear platform, hat car roof or tender. A town's rest waits till you're back aboard.
+- Conductor: new `src/train/conductor.js`, the reference's man, shovel cycle and firebox flare. Grab at the front of the tender gets a line and the next stop. Two lines changed: no hook, and two surges.
+- Without the hook, the only way back is to walk. The 28 m is the reference's hook range plus 2.
+- Fixed along the way: boarding at the caboose put you on top of an invisible rail wall, 5.8 m up. All boarding spots moved inward; all four cars tested from both sides.
+- Checked in the browser (seed 7): crouch, 200 crouched head hits with no throw, a real enemy arrow throwing you off, the skid (16 m/s to walking in 0.7 s), the wait at a water stop and at a town, boarding, pulling out, a rider holding 16 m from you on foot, the 8 damage on a hard landing, the town's rest on boarding, and the conductor's talk. Phone layout at 375×812 and 667×375 with touch events. No page errors. Not tested on a real phone. The walk itself was skipped by moving the player to the train.
+- Not done: §Y's hard brake into towns is its own item. A tunnel still doesn't knock you off the roof. The old `grapple-stagger-conductor` branch wasn't used; reference 0.7 is newer.
+
 ## 2026-11-03 (evening) — Claude Code: §Z.1 step 8, the look (§J, §Q)
 - New `src/core/textures.js`, ported from reference 0.7: the painted detail, planks, riveted iron, bark, stone and cloth textures, filtered with mipmaps and anisotropy. They now cover the ground, scenery, track bed, ties, poles, tunnel stone, towns, all four cars, horses' coats, bandanas, hats and ponchos. Which paint gets which texture on the train is a small table in `train.js`.
 - All materials are now matte Lambert, as in the reference: no shine (§J), and round things shade smooth while four-sided shapes keep their faces (§Q). `flat()` is now `plain()`, with `painted()` beside it in `core/materials.js`.

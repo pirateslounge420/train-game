@@ -262,6 +262,7 @@ body:not(.touch) #touch {
 #draw { width: 104px; height: 104px; border-radius: 50%; font-size: 20px; flex-direction: column; gap: 2px; }
 #draw small { font-size: 13px; letter-spacing: 1px; opacity: 0.8; }
 #jump { width: 72px; height: 72px; border-radius: 50%; font-size: 14px; }
+#crouch { width: 72px; height: 52px; border-radius: 6px; font-size: 13px; }
 #surge { width: 72px; height: 72px; border-radius: 50%; font-size: 13px; flex-direction: column; gap: 2px; }
 #surge small { font-size: 12px; letter-spacing: 2px; color: #cfe0ff; }
 #surge.empty { opacity: 0.45; }
@@ -298,6 +299,7 @@ body.touch #prompt { bottom: 196px; padding: 0 16px; box-sizing: border-box; }
   #feed { top: 66px; }
   #draw { width: 84px; height: 84px; }
   #jump { width: 60px; height: 60px; }
+  #crouch { height: 44px; }
   #surge { width: 60px; height: 60px; }
   #stick { width: 96px; height: 96px; }
   #knob { width: 44px; height: 44px; margin: -22px 0 0 -22px; }

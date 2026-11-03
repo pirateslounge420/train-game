@@ -33,6 +33,8 @@ export const CONFIG = {
     radius: 0.25,
     height: 1.75,
     eyeHeight: 1.62,
+    crouchEye: 0.72, // below the roof boards (§S)
+    crouchSlow: 0.5, // walking speed while crouched
     stepHeight: 0.65, // steps up this high on their own (tender to hat car roof, §M)
     maxHealth: 100,
     regenPerSecond: 0.35, // very slow

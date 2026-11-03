@@ -159,6 +159,21 @@ export function tunnelNear(s, margin) {
   }
   return null;
 }
+// Water stops (§S): sidings every 450 m between towns. The conductor only
+// pulls up at one when he's waiting for you.
+const HALT_SP = 450;
+export function haltOK(d) {
+  return d > 0 && !townNear(d, 320) && !tunnelNear(d, 120);
+}
+export function haltsIn(a, b) {
+  const out = [];
+  for (let d = Math.ceil(a / HALT_SP) * HALT_SP; d < b; d += HALT_SP) if (haltOK(d)) out.push(d);
+  return out;
+}
+export function nextHaltAfter(s) {
+  for (let k = Math.max(1, Math.ceil(s / HALT_SP)); ; k++) if (haltOK(k * HALT_SP)) return k * HALT_SP;
+}
+
 export function townNear(s, margin) {
   ensureRegions(regionAt(s) + 1);
   for (const d of regionStart) if (Math.abs(d - s) < margin) return true;
