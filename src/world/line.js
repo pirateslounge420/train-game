@@ -35,7 +35,7 @@ export const smooth = (e0, e1, x) => {
   const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
   return t * t * (3 - 2 * t);
 };
-function hash2(x, z) {
+export function hash2(x, z) {
   const n = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
   return n - Math.floor(n);
 }

@@ -53,27 +53,16 @@ export const CONFIG = {
     groundTime: 5, // seconds an arrow stays stuck in the ground
   },
 
+  // Riders (§E, §O, §U). Their bodies, hit reactions and gangs are data in
+  // src/enemies/rigs.json; how many come and how they ride is in riders.js,
+  // as in reference 0.7.
   enemies: {
-    startCount: 2,
-    maxCount: 4,
     arrowSpeed: 50, // m/s
-    aimErrorDegrees: 3.5, // their natural inaccuracy
-    shootIntervalMin: 5,
-    shootIntervalMax: 8,
-    shootRange: 45,
-    maxExtraSpeed: 7, // how much faster than the train a horse can gallop
-    riderHealth: 100,
-    horseHealth: 100,
   },
 
   damage: {
-    // player arrows -> bandits
-    riderBody: 55,
-    horseBody: 50,
-    knockOffChance: 0.35, // a body hit that doesn't kill may still unseat him
-    buckOffChance: 0.35, // a horse hit that doesn't kill may throw the rider
-    // bandit arrows -> player
-    playerBody: 10,
-    playerHead: 40,
+    // rider arrows -> you (reference 0.7)
+    playerBody: 20,
+    playerHead: 34,
   },
 };

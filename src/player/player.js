@@ -47,15 +47,6 @@ export class Player {
     return this.train.dirToWorld(this.car, this.vel, out).add(this.car.vel);
   }
 
-  // Hit boxes in train space (for enemy arrows).
-  hitBoxes() {
-    const p = this.local;
-    return [
-      { head: true, min: new THREE.Vector3(p.x - 0.14, p.y + 1.48, p.z - 0.14), max: new THREE.Vector3(p.x + 0.14, p.y + 1.8, p.z + 0.14) },
-      { head: false, min: new THREE.Vector3(p.x - 0.25, p.y + 0.05, p.z - 0.2), max: new THREE.Vector3(p.x + 0.25, p.y + 1.48, p.z + 0.2) },
-    ];
-  }
-
   look(dx, dy) {
     const s = (CONFIG.view.lookSensitivity * Math.PI) / 180;
     this.yaw -= dx * s;

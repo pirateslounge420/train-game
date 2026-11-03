@@ -59,7 +59,7 @@ export class Hud {
     set(this.st.country, biomeOf(t.region).name);
     set(this.st.tod, `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`);
     set(this.st.seed, String(day.seed));
-    set(this.st.down, String(game.bandits.downed));
+    set(this.st.down, String(game.riders.kills));
     const dots = '●'.repeat(t.surges) + '○'.repeat(Math.max(0, 3 - t.surges));
     set(this.st.surge, dots);
     set(this.surgeLbl, dots);

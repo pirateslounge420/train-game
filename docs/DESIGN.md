@@ -157,6 +157,7 @@ A second chat built these into the same artifact on 3 Nov and they are kept in t
 **The look, for the whole game: steampunk cyborg frontier.**
 - Brass and bronze mechanical parts, rivets, gears, exposed pistons, goggles.
 - Clockwork / cyborg horses and riders with scavenged prosthetics bolted onto Western gear: cowboy hats, ponchos, bandanas, leather straps, quivers.
+- The cyborg horses are what explain the riders' unnatural speed (Mike, 3 Nov).
 - A signature glowing green energy (salvaged old-world power) pulses through cracks, veins and seams in machines, cyborg parts and weapons. It is the accent colour against warm desert tones.
 - Bows stay the weapon for everyone, now with mechanical limbs, brass fittings and glowing accents.
 - The train is half salvage, half frontier engineering: the six-cylinder rods and turbine stay, now with brass plating, glowing seams and patched old-world tech.

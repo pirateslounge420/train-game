@@ -9,7 +9,10 @@ import { Train } from './train/train.js';
 import { Player } from './player/player.js';
 import { Bow } from './combat/bow.js';
 import { ArrowSystem } from './combat/arrows.js';
-import { BanditManager } from './enemies/bandits.js';
+import { Riders } from './enemies/riders.js';
+
+// The riders' bodies and hit reactions are data (§O, §P).
+const RIGS = await (await fetch('src/enemies/rigs.json')).json();
 import { Hud } from './ui/hud.js';
 import { Sound } from './audio/sound.js';
 
@@ -69,6 +72,7 @@ const game = {
 
 // Towns: rest, +12 arrows, then on to the next country (§G).
 train.onArrive = (i) => {
+  game.riders.rest();
   player.health = CONFIG.player.maxHealth;
   player.arrows = Math.min(CONFIG.player.maxArrows, player.arrows + 12);
   hud.banner(TOWNS[i % TOWNS.length], `Rested · +12 arrows · next: ${biomeOf(i).name}`);
@@ -79,7 +83,7 @@ hud.onTimeTap = () => (dayT += DAY_LEN / 8);
 let tunnelBannered = -1;
 const HEADLAMP = 300; // candela-ish; three.js lights fall off with distance
 game.arrows = new ArrowSystem(game);
-game.bandits = new BanditManager(game);
+game.riders = new Riders(game, RIGS);
 player.bow = new Bow(game, player); // each player carries their own bow (§W)
 
 // ---- start / pause / death screens -----------------------------------------
@@ -147,7 +151,7 @@ function showDeath() {
   input.active = false;
   document.exitPointerLock();
   overlayTitle.textContent = 'You died';
-  overlayText.innerHTML = `${player.deathReason}<br>You rode ${(train.distance / 1609.34).toFixed(2)} miles and downed ${game.bandits.downed} bandits.`;
+  overlayText.innerHTML = `${player.deathReason}<br>You rode ${(train.distance / 1609.34).toFixed(2)} miles and downed ${game.riders.kills} riders.`;
   overlayButton.textContent = 'Click to ride again';
   overlay.classList.remove('hidden');
 }
@@ -206,7 +210,7 @@ function update(dt) {
   player.applyCamera(camera, time);
   camera.updateMatrixWorld();
   player.bow.update(dt, input);
-  game.bandits.update(dt);
+  game.riders.update(dt, time);
   game.arrows.update(dt);
   if (input.take('grabReq')) game.arrows.grab(player, camera);
   if (input.take('surgeReq')) surge();

@@ -12,6 +12,15 @@ import { groundHeight } from '../world/terrain.js';
 
 const Z = new THREE.Vector3(0, 0, 1);
 const _g = new THREE.Vector3();
+const _e = new THREE.Vector3(), _p0s = new THREE.Vector3(), _pv = new THREE.Vector3(), _c2 = new THREE.Vector3(), _sv = new THREE.Vector3(), _sw = new THREE.Vector3();
+const HEAD_R = 0.24, BODY_R = 0.46; // your hit balls (reference 0.7)
+// Where along a->b (0..1) the segment first comes within r of c, or -1.
+function segSphere(a, b, c, r) {
+  _sv.subVectors(b, a);
+  const L2 = _sv.lengthSq();
+  const t = L2 > 0 ? Math.min(1, Math.max(0, _sw.subVectors(c, a).dot(_sv) / L2)) : 0;
+  return _sw.copy(a).addScaledVector(_sv, t).distanceToSquared(c) <= r * r ? t : -1;
+}
 const LENGTH = 0.9; // tip to nock, as in reference 0.7
 const EMBED = 0.2; // how far the tip sinks into what it hits
 const MAX_STUCK_IN_TRAIN = 70;
@@ -179,7 +188,7 @@ export class ArrowSystem {
 
   // Find the first thing the segment p0->p1 hits.
   trace(p0, p1, a, dt) {
-    const { train, player, bandits } = this.game;
+    const { train, player, riders } = this.game;
     let best = null;
     const consider = (h) => {
       if (h && (!best || h.t < best.t)) best = h;
@@ -203,20 +212,25 @@ export class ArrowSystem {
         const h = segmentBox(r0, r1, c.min, c.max);
         if (h) consider({ t: h.t, type: 'train', car, r0, r1 });
       }
-      if (a.owner === 'enemy' && !player.dead && car === player.car) {
-        for (const b of player.hitBoxes()) {
-          const h = segmentBox(r0, r1, b.min, b.max);
-          if (h) consider({ t: h.t, type: 'player', head: b.head });
-        }
-      }
     }
 
-    if (a.owner === 'player') consider(bandits.trace(p0, p1, dt));
+    // You: a head ball at your eyes and a body ball below it, as in the
+    // reference (the path shifted by how far you moved this frame).
+    if (a.owner === 'enemy' && !player.dead) {
+      const eye = player.eyeWorld(_e);
+      const p0s = _p0s.copy(p0).addScaledVector(player.worldVelocity(_pv), dt);
+      const th = segSphere(p0s, p1, eye, HEAD_R);
+      const tb = segSphere(p0s, p1, _c2.copy(eye).setY(eye.y - 0.72), BODY_R);
+      if (th >= 0) consider({ t: th, type: 'player', head: true });
+      if (tb >= 0) consider({ t: tb, type: 'player', head: false });
+    }
+
+    if (a.owner === 'player') consider(riders.trace(p0, p1));
     return best;
   }
 
   resolveHit(a, hit, p0) {
-    const { train, scene, sound, player, bandits, hud } = this.game;
+    const { scene, sound, player, riders, hud } = this.game;
     const point = p0.clone().lerp(a.pos, hit.t);
     const dir = a.vel.clone().normalize();
 
@@ -239,20 +253,16 @@ export class ArrowSystem {
     } else if (hit.type === 'player') {
       scene.remove(a.mesh);
       const dmg = hit.head ? CONFIG.damage.playerHead : CONFIG.damage.playerBody;
-      player.hurt(dmg, hit.head ? 'An arrow to the head.' : 'Shot down by bandits.');
+      player.hurt(dmg, hit.head ? 'An arrow to the head.' : 'Shot down by riders.');
+      player.shake = Math.max(player.shake, 0.5);
       hud.hurt(hit.head);
       sound.hurt();
-    } else if (hit.type === 'bandit') {
-      // Stick into the horse or rider so it travels with them.
-      const part = hit.part;
-      part.updateMatrixWorld(true);
-      const local = part.worldToLocal(point.clone().addScaledVector(dir, EMBED));
-      const q = part.getWorldQuaternion(new THREE.Quaternion()).invert();
-      a.mesh.position.copy(local);
-      a.mesh.quaternion.setFromUnitVectors(Z, dir).premultiply(q);
-      scene.remove(a.mesh);
-      part.add(a.mesh);
-      bandits.onArrowHit(hit, a.vel);
+    } else if (hit.type === 'rider') {
+      // Stick into the part it hit, so it flies off with it.
+      a.mesh.position.copy(point).addScaledVector(dir, EMBED);
+      a.mesh.quaternion.setFromUnitVectors(Z, dir);
+      hit.part.g.attach(a.mesh);
+      riders.onHit(hit.r, hit.part, a.vel);
     }
   }
 

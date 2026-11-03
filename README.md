@@ -128,14 +128,24 @@ drawing.
   a thin trail: pale blue-white for yours, orange-red for theirs. No aim
   assist and no aiming line. You start with 20 arrows (up to 40), shown at
   the bottom right.
-- **Bandits.** Riders gallop up beside the train and shoot arrows at you.
-  More of them show up as you knock them down. Every box you can see on
-  horse and rider is its own hit box, padded a few centimetres (§U), and
-  each belongs to one of four hit zones:
-  - **Rider's head:** instant kill, a big gold "HEADSHOT!" and a ding.
-  - **Rider's body:** two hits kill him, and any hit may knock him off his horse.
-  - **Horse's head:** kills the horse and throws the rider.
-  - **Horse's body:** two hits bring the horse down; a hit may make it buck the rider off.
+- **Riders** (design §E, §O, §U, ported from reference build 0.7). Four
+  gangs, told apart by poncho: green with yellow lightning, red with orange
+  flames, blue with violet waves, indigo with magenta stars. They flank the
+  train 9 to 23 m out and shoot back, and their aim tightens each stretch.
+  More come in later stretches and at night. Horse and rider are built from
+  real parts, and the boxes you see are the hitboxes:
+  - **Head or neck:** kill. The head flies off in a burst of chunks.
+  - **Gut:** kill.
+  - **Torso:** two hits knock him off.
+  - **Arm:** it flies off; he drops his bow and bolts.
+  - **Leg:** it flies off; he slumps and falls about a second later.
+  - **Hat:** the hardest shot. It spins off and he bolts.
+  - **Horse's head or neck:** the horse goes down and throws him.
+  - **Horse's leg:** it flies off and the horse cartwheels.
+  - **Horse's body:** three hits to the barrel or two to the rump bring it down.
+- **Riders on foot.** A man thrown whole gets up after a second or two, runs
+  at the train, fires two or three wild shots, then runs for it. Any hit
+  finishes him. He only counts as downed if you finish him.
 - **Health.** You have a health bar at the bottom left. It refills very
   slowly once you haven't been hit for a few seconds. Head hits hurt a lot
   more than body hits. Bandits aim where you're standing, so keep moving and
@@ -146,8 +156,7 @@ drawing.
 
 ## Tweaking the game
 
-Almost every number (train speed, arrow speed, draw time, damage, bandit
-accuracy, health regen and so on) is in [`src/config.js`](src/config.js),
+Almost every number (arrow speed, draw time, damage, health regen and so on) is in [`src/config.js`](src/config.js),
 with notes. Change a number, save, and refresh the browser.
 
 ## How the code is organised
@@ -166,7 +175,8 @@ src/
   player/player.js    walking, jumping, ladders, health
   combat/bow.js       drawing and shooting, and the bow you see in your hands
   combat/arrows.js    arrow flight, hits, sticking, and grabbing them back
-  enemies/bandits.js  horse riders: riding, shooting, hit zones, falling off
+  enemies/rigs.json   riders as data: body parts, hit reactions, gangs (edit freely)
+  enemies/riders.js   riding, shooting, hits, gore, riders on foot
   ui/hud.js           health, arrows, hit markers, messages
   audio/sound.js      all sounds (generated in code, no audio files)
 ```

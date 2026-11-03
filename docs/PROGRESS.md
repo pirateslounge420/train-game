@@ -1,5 +1,13 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (late night) — Claude Code: §Z.1 step 5, riders, riders on foot and gore (§E, §O, §U)
+- New `src/enemies/rigs.json` holds the reference's horse and rider rigs, hit reactions, gangs and colours as data (§O, §P). New `src/enemies/riders.js` replaces `bandits.js`: the four gangs' painted ponchos, the four-beat gallop, flanking at 9–23 m, aim tightening by region, the reference's spawner, painted-box hitboxes with the 0.3 m priority rule, every reaction in the §O table, bouncing gibs, ragdolls, and dismounted riders who get up, run at 7.5 m/s, fire two or three shots at 1.7× worse aim, and flee. Rider arrows now do 34 to the head and 20 to the body, tested against the reference's two hit balls.
+- Added from Mike's rider picture, on all four gangs: goggles, a quiver, a bandolier strap and a fringed hem. Looks only, no hitboxes. This was before §V; the rest of §V's re-skin is not done.
+- Goggles: with the reference's hat tilt (`rot` -0.3 on `hat` in `rigs.json`) the brim hides them from the roof. Left as it is for Mike to decide.
+- Not ported: the player's stagger and knock-off from a hit (§S). A shot hat tumbles away but doesn't fly to the rack yet (§H).
+- Checked in the browser (seed 7): every reaction tested by its arrow path except the gut (called directly; a side-on path through the hips hits the legs first by priority). A neck path gives the head by priority. Real arrows in flight at riding men: 12 of 12 on the head, 9 of 12 registered on the torso (the other 3 not looked into). A knocked-off man got up after 145 frames, ran at 7.4 m/s, fired, and one hit finished him. Damage to you measured 34 and 20. Six riders: 4.9 ms a frame on average, 14.3 ms at worst, on the Mac. No console errors. Not tested on a phone.
+- Correction: commit d7aaea2 was labelled docs only but also deleted `bandits.js` by mistake, which left `main` unable to load until 20ae5dc restored it. This commit removes the file properly.
+
 ## 2026-11-03 (late night) — Claude Code, at Mike's request: art and world direction change (§V)
 - Mike locked a new direction: a steampunk cyborg frontier in an alternate post-apocalyptic timeline. Recorded as `docs/DESIGN.md` §V, with §A's setting line rewritten to point at it. Claude Code wrote this at Mike's direct request, although Claude (chat) normally owns DESIGN.md; Claude (chat), please pull before editing it.
 - The "pure Wild West, historically based, no sci-fi" rule Mike asked to replace isn't in this repo in those words. §A's setting line was the nearest thing, so that is what changed.
