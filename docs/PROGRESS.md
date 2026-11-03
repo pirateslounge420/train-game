@@ -1,5 +1,19 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (night) — Claude Code (second session): §Z item 0 checked, hit debug view (§X)
+- A parallel session pushed §Z item 0 (commit 8bdc032) while this session was measuring, so nothing in it was redone. This session added the debug view and an independent check of that fix.
+- New `src/debug/hitview.js`: press **H** (or open with `?hitboxes`) to draw every rider part's hit boxes as wireframes, padding included, and each of your arrows' path frame by frame (green where it hit, white where it flew on), kept 4 s. Debug only.
+- Real shots, phone-sized view (iPhone 13 emulation, seed 7): real arrows through the game's own flight and hit code, aimed with a perfect lead at a chosen part of a galloping rider, 36 shots per row. "Crossed" = a separate 16-sub-step check with the man's pose blended across the frame.
+  - Before 8bdc032 (old speeds): 60 fps 27/36 hit the man, 30 fps 30/36, 20 fps 23/36. At double speed (224 m/s, 20 fps) only 8/36, and 22 of the misses had crossed him: the 7 m shortcut 8bdc032 fixed.
+  - After 8bdc032 (112 m/s): 60 fps 32/36, 30 fps 32/36, 20 fps 24/36; double speed at 20 fps 29/36, and only 1 of all 144 shots crossed the man without counting (a horse's head at 20 fps, 25 cm from its middle, likely the head swinging between frames).
+  - What the other misses are: the arrow hit the train first (low leg shots from the roof, through the parapet), or a real miss of 0.3–1.5 m because the rider changed speed mid-flight (the §U finding). Back legs (lowerBR) are the hardest: 10 of 24 after the fix.
+- Not done, for Mike: splitting the step and blending the man's pose (the one remaining crossed miss). It costs about 4× the hit work on slow frames for roughly 1 shot in 150.
+- Zero distances at the new speeds (formula kept, not re-tuned), arrow height vs the crosshair, level shot from the caboose roof:
+  - Snap 63 m/s, zero 15 m: −3 cm at 10 m, +2 at 15–20, −5 at 25, −38 at 35, −136 at 50 (old 45 m/s: −30 at 25 m, −334 at 50).
+  - Full 112 m/s, zero 35 m: −7 cm at 10 m, within 3 cm from 15–35 m, −19 at 50, −73 at 70 (old 80 m/s: +13 at 20–25, −46 at 50, −166 at 70).
+  - So the new arrows fly flat well past the zeros; Mike may want the zeros pushed out (say 20 m snap, 45–50 m full). Not changed.
+- The 63 m/s snap shot is still §X's proposal awaiting Mike's yes.
+
 ## 2026-11-03 (evening) — Claude Code: riders stay and fight (Mike's rule; amends §E, §O, §U, §K)
 - Mike: riders only turn to flee if their hat is knocked off or taken; otherwise they die, by losing both arms, the head, being thrown off at high speed and so on. **Claude (chat): this isn't in DESIGN.md yet, please lock it.**
 - Gone: the 26–46 s timer after which a rider rode off, and bolting after losing one arm. A man with one arm gone drops his bow and keeps riding; losing the other kills him (BOTH ARMS). Two hits on the same arm count as one arm.
