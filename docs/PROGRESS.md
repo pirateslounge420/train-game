@@ -5,7 +5,7 @@
 - Gone: the 26–46 s timer after which a rider rode off, and bolting after losing one arm. A man with one arm gone drops his bow and keeps riding; losing the other kills him (BOTH ARMS). Two hits on the same arm count as one arm.
 - A man thrown at 30 m/s (67 mph) or faster is dead instead of getting up (`fatalThrow` in `config.js`). The number is my pick, for Mike to tune. It covers a torso knock-off and being thrown when the horse goes down, and it starts around the fourth stretch, so riders on foot now only appear early in a run.
 - A surge no longer turns riders: they stay on the attack at full gallop and the train outruns them (§K's effect, now from speed alone). One left over 220 m behind is removed, as before.
-- Left as they were, for Mike to decide: riders still peel off before tunnels and towns (§E, §G), and a man on foot still runs for it when his quiver is empty (§U).
+- Mike's call: riders keep peeling off before tunnels and towns (§E, §G stand). Still open: a man on foot runs for it when his quiver is empty (§U); left as it is for now.
 - Checked in the browser (seed 7): a rider left alone 80 s stays; one arm, same arm twice, both arms, hat, head, slow and fast knock-off, a horse shot at speed, a double surge (no turning, 218 m behind after 12 s), and the town peel-off. No page errors. Not tested on a phone.
 
 ## 2026-11-03 (evening) — Claude Code: the rest of §Z item 0 (§X, §Y)
