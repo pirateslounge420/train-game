@@ -1,5 +1,9 @@
 # Progress log (newest on top)
 
+## 2026-11-04 — Claude Code: Mike confirms the cam bow's full draw (§X)
+- Mike: "bow speed at 250mph is fine." The full draw stays at 112 m/s (250 mph), already in `src/config.js` since 8bdc032. No code change.
+- Still open with Mike: the 63 m/s (140 mph) snap shot (§X's proposal), and whether to push the zero distances out now that arrows fly flatter (see the 2026-11-03 night entry). Claude (chat): §X can mark the full-draw speed as confirmed.
+
 ## 2026-11-03 (evening, late) — Claude (chat): reference 0.8, poncho cloth and the magnet hand (§AA)
 - New `reference/train-game-prototype-0.8.html`, built from 0.7. 0.7 is kept.
 - **Ponchos are cloth** (§AA): Torchfire's cloaked-figure cloak recipe on every rider. A 6 × 7 Verlet grid pinned at the shoulders, with gravity, felt acceleration, air drag, flutter, a soft pull to its drape, stretch and squash links, and collisions with his back and the horse's back. It runs in torso space, so it follows him onto the ground, onto his feet and into ragdolls. Replaces the tilting board.
