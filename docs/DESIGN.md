@@ -235,6 +235,38 @@ A second chat built these into the same artifact on 3 Nov and they are kept in t
 
 **Stretches between towns are 100 % longer than the original** (Mike, 3 Nov; supersedes §K's 25 %): region length = cruise × 210 s (was × 131 s; the original was × 105 s).
 
+## §AA. Ponchos are cloth; the magnet hand, playable (3 Nov, evening; Mike: ponchos locked; the hand's numbers are Claude's, Mike to confirm in play; amends §E, §X, §S) — built ref 0.8
+**Ponchos are cloth (Mike: "we can use that recipe").** The recipe is Torchfire's cloaked figure (its cloak sim, `player_body.gd`), cut down for a rider:
+- A 6 × 7 grid of points hanging from the shoulders down his back (0.54 m wide at the top, 0.70 at the hem, 0.82 m long). The top row is pinned to the torso.
+- The rest move by Verlet steps (sub-steps of about 12 ms) under:
+  - gravity;
+  - the rider's own acceleration, felt backwards, so it swings as he starts, stops and turns;
+  - drag against the air rushing past (his speed against a slow wind), so it streams out behind at a gallop;
+  - a flutter that grows with that air speed;
+  - a soft pull back to its drape, so it settles when he stands.
+- Links across, down and diagonally: stretch is hard, squash is soft, so it can bunch. It collides with his back and the horse's back: standing, it lies over the horse's rump.
+- It is simulated in the torso's own space, so it rides with him, falls with him when he's knocked off, streams behind a dismounted rider running, and keeps flapping on a body that's been shot off.
+- Same gang pattern as before, drawn on both sides. It replaces the old single tilting board.
+- Job (§X rule): it shows speed and motion at a glance, and which way a rider is turning before his horse does.
+- Starting numbers in `PON` in the reference.
+
+**The magnet hand, as built in reference 0.8 (§X).** The rules are §X's. What the build adds, all first guesses:
+- **Reach.** A tap grabs out to 7 m. Hold to charge: after 0.18 s it charges over 0.75 s to 26 m (the old hook's reach). The grab targets whatever is nearest the crosshair line, with a cone that widens with distance.
+- **The spring.**
+  - Out at about 58 m/s, slowing as it stretches.
+  - A miss hangs 0.24 s at full stretch, with an overshoot and the fingers open; anything within 0.75 m is caught.
+  - Then it snaps back, speeding up, at about 75 m/s.
+  - 0.25 s before the next launch.
+- **What it takes:**
+  - Arrows stuck in the cars, inside or **outside**: arrows in the outside walls are now kept and can be fetched, which fixes "impossible to retrieve".
+  - Arrows lying on the ground.
+  - Riders' hats. A snatched hat spooks the rider into fleeing. A new gang's hat goes up to the rack; one you already have goes on your head.
+- **Walls.** The hand can't pass through a car. If the straight line is blocked, it tries an arc up and over (the roof's edge board, a window sill) and flies that arc. So from the roof's edge you can lean over and pick arrows off the outside wall; from the middle of the roof you can't.
+- **Thrown off.** Fire the hand at any car. It clamps on and you're dragged along behind on the tether, bouncing in the dirt, reeling in at 9 m/s and hauled up for the last few metres, then put aboard. The old §S hook is gone from the build.
+- **The look.** Three fingers and a thumb, iron and brass, a glowing magnet core on the back of the wrist. The left hand holds the bow at the riser; the right hooks the string, and it's the one that flies. Item 2 puts the bow away and shows both hands floating. Idle, the fingers flex and the hands bob. The tether is a jagged electric arc, and the flying hand has a glow so you can follow it 20 m out.
+- **Controls.** Right click / Grab / E: tap or hold. Tapping Grab mid-draw cancels the draw; clicking Draw mid-charge cancels the charge (§X). Close up, a tap still wears a racked hat, talks to the conductor and climbs a stopped train. On a phone, a quick tap on something in view sends the hand to it. Item 2's left click says fists come next.
+- **Open for Mike:** the reach, the spring's timing, whether a snatched hat you already own should go on your head or just drop, and whether the hand should ever hit a rider (it doesn't).
+
 ## §Z. The queue (order of work for Claude Code)
 0. **Next, before the rest of item 1 (3 Nov, late afternoon):** fix arrows passing through riders (§X), then the cam bow's speeds (§X), two surges a stretch (§Y), stretches 100 % longer (§Y), and towns refilling to 15 arrows (§X). Small, and it's the core feel.
 1. Port the reference build's feel into `src/`, feature by feature, keeping the repo's module layout: §B/§L/§U archery and hitboxes, §C/§M walking and phone controls, §G/§R the seeded line, climate biomes and the day, §D/§K/§N the four cars, the engine and the surge, §E/§O/§U riders, dismounted riders and gore (as data), §H/§T hats, §I HUD, §J/§Q look, §S the conductor, crouch, knock-off and hook. Stop and explain after each.
@@ -242,7 +274,8 @@ A second chat built these into the same artifact on 3 Nov and they are kept in t
 3. The first town stop: get off, walk one street, a store that restocks arrows.
 4. Trophies persist: the hat rack keeps its hats across runs.
 5. Co-op (§W).
-6. The cyborg player (§X): floating hands in view, the magnet-hand grab and launch, fists, the Derringer, the cam bow model, losing parts. Replaces §S's hook.
+6. The cyborg player (§X, §AA): floating hands in view, the magnet-hand grab and launch (port from reference 0.8), fists, the Derringer, the cam bow model, losing parts. Replaces §S's hook.
+6a. Poncho cloth on every rider (§AA): port `makePoncho`/`stepPoncho` from reference 0.8. Small and independent of 6; can go any time.
 7. The train under fire (§Y): car health, banking and sparks on curves, the conductor's hard brake, boarding and the horse ferry, gangs that pile up, the rival train, bombs and the rally.
 
 (3 Nov, Mike: "No shovel, cut §Z.3." The cab-and-firebox coal run is gone with the shovel, per §K; the old items 4–6 moved up.)

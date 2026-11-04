@@ -1,5 +1,30 @@
 # Progress log (newest on top)
 
+## 2026-11-03 (evening, late) — Claude (chat): reference 0.8, poncho cloth and the magnet hand (§AA)
+- New `reference/train-game-prototype-0.8.html`, built from 0.7. 0.7 is kept.
+- **Ponchos are cloth** (§AA): Torchfire's cloaked-figure cloak recipe on every rider. A 6 × 7 Verlet grid pinned at the shoulders, with gravity, felt acceleration, air drag, flutter, a soft pull to its drape, stretch and squash links, and collisions with his back and the horse's back. It runs in torso space, so it follows him onto the ground, onto his feet and into ragdolls. Replaces the tilting board.
+- **The magnet hand** (§X, §AA) replaces the hook in the reference:
+  - Three-finger robot hands with magnet cores: the bow grip, the draw hand, and both hands free as item 2.
+  - Tap or hold to grab, the spring out-hang-snap, the electric tether, and catching in the hang.
+  - It takes stuck arrows (outside walls now kept), ground arrows and riders' hats.
+  - It arcs over the roof board when the straight line is blocked.
+  - Thrown off, it latches onto a car and drags you in.
+  - Phone: hold Grab, or tap a thing on screen.
+- Also fixed: the riders' bow string (`rotation.z`, as found yesterday); the bow's grip block now sits at the riser, 0.42 m ahead of the string.
+- Tested headless (Chrome, SwiftShader, three.js r128 from GitHub):
+  - Poncho close-ups at a gallop, standing, and on a dismounted rider running.
+  - A tap grab of a roof arrow (20 → 21).
+  - A charged miss reaching 23 m and hanging.
+  - A hat snatched off a galloping rider 11 m out (he flees, the hat goes to the rack).
+  - An outside-wall arrow from the roof's edge (over the board), but not from mid-roof.
+  - An arrow inside the cabin refused through the roof.
+  - A ground arrow fetched 9 m out.
+  - Thrown off at 14 m/s: latched onto the hat car, dragged, put aboard.
+  - Phone 375 × 812 with touch: Grab held to charge, then released (20 → 21); a tap on an arrow on screen (21 → 22).
+  - No page errors anywhere.
+- Not tested on a real phone. The headless clock runs about a third of real time, so the feel of the timings is for Mike to judge in play.
+- **For Claude Code:** §Z 6 now has a reference to port. 6a (poncho cloth) is new and small.
+
 ## 2026-11-03 (evening, later) — Claude (chat): machine riders, higher quality; a way to see them
 - Mike asked for higher quality. `machine-riders.js` now: chamfered plates (extruded along the thinnest axis so every long edge catches light), rivets, harness and bridle straps, a saddle with stirrups, a sloping haunch plate, side plates and a brass ridge on the neck, pistons with collars, hip gears with teeth, a hanging tail of strands, a thinner mane; brushed-metal, weave and leather grains tinted by each material; Phong brass with specular; energy that pulses (veins, bands, hubs) with additive blooms on eyes, lenses, cams and hubs. Rider: smaller hat so the goggles show under the brim (brim 0.34 m, not 0.46), goggles resting on the bandana, joints at shoulders, elbows, hips and knees, a draped poncho layer, fingers on the bow hand, spurs, a buckle, a bandolier. Compound bow rebuilt (riser, limbs, cams, string and cables, all in the bow plane). ~230 meshes a rider; for the game, merge each part's pieces by material.
 - Bug shared with the game: the enemy bow's string was a 0.84 m stick along z through the hand (the torus's tips are at ±x). Fixed in the asset; the game's `makeRider` has the same line (`str.rotation.x=PI/2` should be `rotation.z`).
