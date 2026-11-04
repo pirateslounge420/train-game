@@ -1,5 +1,9 @@
 # Progress log (newest on top)
 
+## 2026-11-04 — Claude (chat): machine riders rebuilt as sculpted forms (Melee, not Minecraft)
+- Mike: not pleased with the boxy low-poly look; wants models that resemble his pixel sprite (`reference/assets/gold-lightning-sprite.png`) at Super Smash Bros. Melee quality. Asked whether to go pixel art; my advice was no (first-person 3D, per-part gore and ragdolls need meshes; sprites would mean hundreds of frames per gang) and to pixelate the render instead if the feel is wanted. Not decided.
+- `machine-riders.js`: every piece is now a rounded form: ellipsoids, tapered tubes with ball joints, lathes (the poncho is a cone with the pattern, the hat a lathe with a curled brim). Gold body with dark belly and chest; mane as tufts; tail as strands; neck tubes with joint spheres. Rider: capsule limbs, ball joints, round head under the bandana, goggles under the brim. Sprite palette for Gold Lightning. New piece kinds `ell` and `lathe`. Rig data unchanged (checked).
+- Rendered headless each round; renders in `reference/assets/renders/`. Weak spot still: the neck reads as beads (two segments is the rig).
 ## 2026-11-04 — Claude Code: Mike confirms the cam bow's full draw (§X)
 - Mike: "bow speed at 250mph is fine." The full draw stays at 112 m/s (250 mph), already in `src/config.js` since 8bdc032. No code change.
 - Still open with Mike: the 63 m/s (140 mph) snap shot (§X's proposal), and whether to push the zero distances out now that arrows fly flatter (see the 2026-11-03 night entry). Claude (chat): §X can mark the full-draw speed as confirmed.

@@ -19,9 +19,9 @@
 const PI=Math.PI;
 
 const SKINS={
-  goldLightning:{ name:'Gold Lightning', plate:0xc9a227, plate2:0x8a6a1c, under:0x1a1a1f, chrome:0x9a8a5a, accent:0x46ff5e, eye:0xb0ffb8,
-    hat:0x6b3f1e, band:'poncho', bandana:0x2f9a4a, coat:0x3a2a1c, glove:0x7a4a22, boot:0x15120f, quiver:0x4a2e18, mane:0x151515,
-    poncho:{pattern:'lightning',base:'#2f8f3a',mark:'#f0d030'}, bow:'compound', bowColor:0xc9a227 },
+  goldLightning:{ name:'Gold Lightning', plate:0xe2b81c, plate2:0x9c7a14, under:0x1d1d22, chrome:0xb09a4a, accent:0x4cff3c, eye:0xc8ffc0,
+    hat:0x6e3b16, band:'poncho', bandana:0x2a9a3c, coat:0x3b2a1a, glove:0x8a5224, boot:0x1a1716, quiver:0x4a2e18, mane:0x1a1a1d,
+    poncho:{pattern:'lightning',base:'#2a8f3a',mark:'#e8d03a'}, bow:'compound', bowColor:0xc9a227 },
   violetChevron:{ name:'Violet Chevron', plate:0x2a2c3a, plate2:0x3b3e52, under:0x13141b, chrome:0x8d93a4, accent:0xa877ff, eye:0xc9a6ff,
     hat:0x101117, band:0x5a2ad0, bandana:0x7b55f0, coat:0x1a1622, glove:0x101117, boot:0x14110f, quiver:0x101117, mane:0x101117,
     poncho:{pattern:'chevron',base:'#1c1030',mark:'#8a5cf0'}, bow:'recurve', bowColor:0x6f33e8 },
@@ -36,14 +36,14 @@ function makeMaterials(THREE,skin){
   const M={};
   M.plate=metal(skin.plate,55,0x66573a); M.plate2=metal(skin.plate2,40,0x4a4030); M.under=metal(skin.under,18,0x222228);
   M.chrome=new THREE.MeshPhongMaterial({color:skin.chrome,shininess:120,specular:0xd0d0d8});
-  M.hat=cloth(skin.hat,leather); M.bandana=cloth(skin.bandana); M.coat=cloth(skin.coat); M.glove=cloth(skin.glove,leather); M.boot=cloth(skin.boot,leather); M.quiver=cloth(skin.quiver,leather);
+  M.hat=cloth(skin.hat,leather); M.hat.side=THREE.DoubleSide; M.bandana=cloth(skin.bandana); M.coat=cloth(skin.coat); M.glove=cloth(skin.glove,leather); M.boot=cloth(skin.boot,leather); M.quiver=cloth(skin.quiver,leather);
   M.strap=cloth(0x3a2616,leather); M.mane=new THREE.MeshLambertMaterial({color:skin.mane});
   M.glow=new THREE.MeshLambertMaterial({color:Ad.getHex(),emissive:A.getHex(),emissiveIntensity:0.9});   // energy: veins, bands, hubs, bow marks
   M.eye=new THREE.MeshBasicMaterial({color:skin.eye});                  // horse eye, goggle lenses, forehead lens: unlit, always bright
   M.bow=skin.bow==='compound'?metal(skin.bowColor,70,0x77653a):new THREE.MeshLambertMaterial({color:skin.bowColor,emissive:Ad.getHex()});
   M.shaft=cloth(0xcdbf9a); M.fletch=cloth(parseInt(skin.poncho.mark.slice(1),16)); M.string=new THREE.MeshBasicMaterial({color:0xe8e2cf});
   M.void=new THREE.MeshLambertMaterial({color:0x07060c});
-  M.poncho=cloth(0xffffff,ponchoTexture(THREE,skin.poncho,2));
+  M.poncho=cloth(0xffffff,ponchoTexture(THREE,skin.poncho,2)); M.poncho.side=THREE.DoubleSide;
   M.band=skin.band==='poncho'?cloth(0xffffff,ponchoTexture(THREE,skin.poncho,6)):cloth(skin.band);
   M.spr=new THREE.SpriteMaterial({map:glowSprite(THREE),color:A.getHex(),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:0.6});
   M._accent=A;
@@ -108,81 +108,93 @@ function plateGeo(THREE,w,h,d,c){
 }
 
 // ---- the horse: a machine. Pivots, masses, hit zones as HORSE_RIG. ----
+// ---- the horse: a machine, but sculpted. Rounded forms (ellipsoids, tapered tubes, ball joints) with the plates laid over them.
+// Pivots, masses, hit zones as HORSE_RIG; only the pieces changed.
 const HORSE=[
  {n:'barrel',p:null,at:[0,0,0],rot:[0,0,0],mass:160,c:[0,0,0],r:0.5,pri:13,hp:3, hit:[[0.5,0.7,1.1,0,0,0.05]],
-  pieces:[['box',0.5,0.7,1.1,0,0,0.05,'under'],['plate',0.56,0.56,0.92,0,0.03,0.05,'plate',0.06],['plate',0.44,0.06,0.9,0,0.36,0.05,'plate2'],['box',0.52,0.12,0.3,0,-0.28,0.05,'under'],...rivets(0,0.5,0.86,0.28,0.03,0.05,'x'),...rivets(0,0.5,0.86,-0.28,0.03,0.05,'x'),['box',0.54,0.05,0.03,0,-0.06,-0.5,'strap'],['box',0.56,0.03,0.07,0,-0.12,0.12,'strap'],['box',0.3,0.06,0.5,0,0.4,0.05,'strap'],['box',0.02,0.3,0.06,-0.285,0.2,0.1,'strap'],['box',0.02,0.3,0.06,0.285,0.2,0.1,'strap'],['torus',0.045,0.01,-0.285,0.04,0.1,'chrome'],['torus',0.045,0.01,0.285,0.04,0.1,'chrome'],
-          ['box',0.012,0.03,0.7,-0.272,0.1,0.05,'glow'],['box',0.012,0.03,0.7,0.272,0.1,0.05,'glow'],
-          ['box',0.012,0.34,0.03,-0.272,-0.06,-0.25,'glow'],['box',0.012,0.34,0.03,0.272,-0.06,-0.25,'glow'],
-          ['box',0.012,0.22,0.03,-0.272,-0.12,0.32,'glow'],['box',0.012,0.22,0.03,0.272,-0.12,0.32,'glow'],
-          ['box',0.3,0.03,0.012,0,-0.2,-0.5,'glow'],['box',0.03,0.03,0.03,-0.26,0.22,-0.3,'chrome'],['box',0.03,0.03,0.03,0.26,0.22,-0.3,'chrome'],['box',0.03,0.03,0.03,-0.26,0.22,0.4,'chrome'],['box',0.03,0.03,0.03,0.26,0.22,0.4,'chrome']]},
+  pieces:[['ell',0.25,0.33,0.6,0,0.0,0.05,'plate'],                                 // the body: gold, sleek
+          ['ell',0.2,0.18,0.42,0,-0.2,0.08,'under'],                                 // the dark belly
+          ['ell',0.17,0.17,0.14,0,-0.12,-0.5,'under'],                                 // the dark chest
+          ['ell',0.2,0.1,0.26,0,0.26,-0.1,'plate2'],['ell',0.2,0.1,0.26,0,0.26,0.26,'plate2'],   // back plates
+          ['cyl',0.3,0.3,0.06,0,0.0,-0.02,'strap','z',24],                           // girth
+          ['plate',0.3,0.05,0.5,0,0.36,0.05,'strap',0.015],['plate',0.34,0.03,0.56,0,0.335,0.05,'quiver',0.01],   // saddle
+          ['box',0.02,0.3,0.06,-0.285,0.2,0.1,'strap'],['box',0.02,0.3,0.06,0.285,0.2,0.1,'strap'],['torus',0.045,0.01,-0.285,0.04,0.1,'chrome'],['torus',0.045,0.01,0.285,0.04,0.1,'chrome'],
+          ['box',0.012,0.03,0.6,-0.29,0.08,0.0,'glow'],['box',0.012,0.03,0.6,0.29,0.08,0.0,'glow'],
+          ['box',0.012,0.26,0.03,-0.275,-0.06,-0.2,'glow'],['box',0.012,0.26,0.03,0.275,-0.06,-0.2,'glow'],
+          ['box',0.012,0.18,0.03,-0.26,-0.08,0.3,'glow'],['box',0.012,0.18,0.03,0.26,-0.08,0.3,'glow'],
+          ['riv',-0.27,0.2,-0.3],['riv',0.27,0.2,-0.3],['riv',-0.27,0.2,0.34],['riv',0.27,0.2,0.34],['riv',-0.29,-0.06,0.04],['riv',0.29,-0.06,0.04]]},
  {n:'croup',p:'barrel',at:[0,0.02,0.6],rot:[0,0,0],mass:70,c:[0,0,0.3],r:0.42,pri:12,hp:2, hit:[[0.46,0.6,0.6,0,0,0.3]],
-  pieces:(function(){ const p=[['plate',0.46,0.6,0.6,0,0,0.3,'plate',0.07],['plate',0.42,0.08,0.44,0,0.2,0.42,'plate',0.03,{rot:[0.55,0,0]}],['plate',0.4,0.06,0.34,0,-0.1,0.6,'plate2',0.02,{rot:[-0.5,0,0]}],['plate',0.4,0.05,0.5,0,0.3,0.3,'plate2'],['box',0.012,0.03,0.4,-0.233,0.18,0.3,'glow'],['box',0.012,0.03,0.4,0.233,0.18,0.3,'glow']];
-    for(const s of [-1,1]){ p.push(['cyl',0.16,0.16,0.06,s*0.25,0,0.3,'plate2','x',10]); p.push(['cyl',0.05,0.05,0.09,s*0.25,0,0.3,'glow','x',10]); p.push(['spr',0.3,s*0.3,0,0.3]);
-      for(let i=0;i<8;i++){ const a=i/8*PI*2; p.push(['plate',0.05,0.05,0.05,s*0.25,Math.cos(a)*0.17,0.3+Math.sin(a)*0.17,'plate2']); } } // the hip gear's teeth
+  pieces:(function(){ const p=[['ell',0.24,0.3,0.36,0,-0.02,0.22,'plate'],['ell',0.2,0.16,0.3,0,-0.2,0.3,'under'],['ell',0.13,0.19,0.17,-0.17,-0.1,0.2,'plate2'],['ell',0.13,0.19,0.17,0.17,-0.1,0.2,'plate2'],
+    ['box',0.012,0.03,0.34,-0.23,0.14,0.25,'glow'],['box',0.012,0.03,0.34,0.23,0.14,0.25,'glow']];
+    for(const s of [-1,1]){ p.push(['cyl',0.15,0.15,0.05,s*0.26,0,0.22,'plate2','x',12]); p.push(['cyl',0.05,0.05,0.08,s*0.26,0,0.22,'glow','x',10]); p.push(['spr',0.28,s*0.3,0,0.22]);
+      for(let i=0;i<8;i++){ const a=i/8*PI*2; p.push(['box',0.045,0.045,0.045,s*0.26,Math.cos(a)*0.155,0.22+Math.sin(a)*0.155,'plate2']); } }
     return p; })()},
  {n:'tail',p:'croup',at:[0,0.22,0.6],rot:[-0.5,0,0],mass:3,c:[0,0,0.3],r:0.14,pri:14,hp:1, hit:[[0.1,0.12,0.6,0,0,0.3]],
-  pieces:[['box',0.06,0.07,0.6,0,0,0.3,'mane'],['box',0.035,0.05,0.5,-0.045,-0.03,0.36,'mane'],['box',0.035,0.05,0.5,0.045,-0.03,0.36,'mane'],['box',0.03,0.04,0.4,-0.02,-0.07,0.48,'mane'],['box',0.03,0.04,0.4,0.02,-0.07,0.48,'mane'],['box',0.025,0.035,0.3,0,-0.1,0.58,'mane']]},
+  pieces:[['cyl',0.015,0.04,0.64,0,0,0.32,'mane','z',8],['cyl',0.01,0.03,0.5,-0.025,-0.03,0.42,'mane','z',6],['cyl',0.01,0.03,0.5,0.025,-0.03,0.42,'mane','z',6],['cyl',0.008,0.025,0.4,0,-0.05,0.55,'mane','z',6],['cyl',0.008,0.02,0.36,-0.015,-0.07,0.6,'mane','z',6],['cyl',0.008,0.02,0.36,0.015,-0.07,0.6,'mane','z',6]]},
  {n:'neck1',p:'barrel',at:[0,0.28,-0.5],rot:[0.55,0,0],mass:26,c:[0,0.1,-0.2],r:0.24,pri:5,hp:1, hit:[[0.3,0.36,0.42,0,0.1,-0.2]],
-  pieces:[['box',0.3,0.36,0.42,0,0.1,-0.2,'under'],['plate',0.32,0.22,0.34,0,0.14,-0.22,'plate',0.04],['plate',0.03,0.3,0.36,-0.16,0.02,-0.2,'plate2',0.01],['plate',0.03,0.3,0.36,0.16,0.02,-0.2,'plate2',0.01],['box',0.012,0.26,0.03,-0.162,0.1,-0.2,'glow'],['box',0.012,0.26,0.03,0.162,0.1,-0.2,'glow'],
-          ['box',0.035,0.14,0.08,0,0.3,-0.06,'mane'],['box',0.035,0.16,0.08,0,0.32,-0.16,'mane'],['box',0.035,0.16,0.08,0,0.33,-0.26,'mane'],['box',0.035,0.14,0.08,0,0.31,-0.36,'mane'],['box',0.035,0.12,0.08,0,0.27,0.04,'mane']]},
+  pieces:[['sph',0.19,0,0.06,0.0,'plate'],['cyl',0.15,0.19,0.44,0,0.08,-0.2,'plate','z',14],['ell',0.09,0.1,0.2,0,-0.1,-0.2,'under'],['ell',0.17,0.12,0.16,0,0.1,-0.2,'plate2'],
+          ['box',0.012,0.2,0.03,-0.172,0.08,-0.2,'glow'],['box',0.012,0.2,0.03,0.172,0.08,-0.2,'glow'],
+          ['ell',0.035,0.09,0.07,0,0.3,-0.04,'mane',{rot:[-0.5,0,0]}],['ell',0.035,0.1,0.07,0,0.32,-0.14,'mane',{rot:[-0.5,0,0]}],['ell',0.035,0.1,0.07,0,0.33,-0.24,'mane',{rot:[-0.5,0,0]}],['ell',0.035,0.09,0.07,0,0.31,-0.34,'mane',{rot:[-0.5,0,0]}]]},
  {n:'neck2',p:'neck1',at:[0,0.22,-0.4],rot:[0.25,0,0],mass:18,c:[0,0.08,-0.2],r:0.22,pri:4,hp:1, hit:[[0.27,0.32,0.4,0,0.08,-0.2]],
-  pieces:[['box',0.27,0.32,0.4,0,0.08,-0.2,'under'],['plate',0.29,0.2,0.3,0,0.12,-0.2,'plate',0.04],['plate',0.03,0.26,0.32,-0.145,0.02,-0.2,'plate2',0.01],['plate',0.03,0.26,0.32,0.145,0.02,-0.2,'plate2',0.01],['box',0.012,0.22,0.03,-0.147,0.08,-0.2,'glow'],['box',0.012,0.22,0.03,0.147,0.08,-0.2,'glow'],
-          ['box',0.035,0.15,0.08,0,0.27,-0.08,'mane'],['box',0.035,0.15,0.08,0,0.28,-0.18,'mane'],['box',0.035,0.14,0.08,0,0.27,-0.28,'mane'],['box',0.035,0.12,0.08,0,0.24,-0.36,'mane']]},
+  pieces:[['sph',0.15,0,0.04,0.0,'plate'],['cyl',0.12,0.15,0.4,0,0.06,-0.2,'plate','z',14],['ell',0.07,0.08,0.18,0,-0.1,-0.2,'under'],['ell',0.14,0.1,0.14,0,0.08,-0.2,'plate2'],
+          ['box',0.012,0.18,0.03,-0.148,0.06,-0.2,'glow'],['box',0.012,0.18,0.03,0.148,0.06,-0.2,'glow'],
+          ['ell',0.035,0.09,0.07,0,0.26,-0.06,'mane',{rot:[-0.5,0,0]}],['ell',0.035,0.09,0.07,0,0.27,-0.16,'mane',{rot:[-0.5,0,0]}],['ell',0.03,0.08,0.06,0,0.25,-0.26,'mane',{rot:[-0.5,0,0]}],['ell',0.028,0.07,0.06,0,0.22,-0.34,'mane',{rot:[-0.5,0,0]}]]},
  {n:'skull',p:'neck2',at:[0,0.18,-0.38],rot:[-0.85,0,0],mass:12,c:[0,0,-0.22],r:0.28,pri:3,hp:1,
   hit:[[0.25,0.28,0.5,0,-0.02,-0.22],[0.06,0.14,0.06,-0.08,0.18,-0.1],[0.06,0.14,0.06,0.08,0.18,-0.1]],
-  pieces:[['plate',0.25,0.28,0.5,0,-0.02,-0.22,'plate',0.04],['box',0.2,0.18,0.2,0,-0.08,-0.5,'under'],['plate',0.27,0.04,0.44,0,0.1,-0.2,'plate2'],
-          ['plate',0.06,0.14,0.06,-0.08,0.18,-0.1,'plate2'],['plate',0.06,0.14,0.06,0.08,0.18,-0.1,'plate2'],
-          ['cyl',0.06,0.06,0.03,0,0.12,-0.26,'plate2','y',12],['cyl',0.04,0.04,0.045,0,0.12,-0.26,'eye','y',12], // the forehead lens
-          ['sph',0.045,-0.125,0.03,-0.3,'eye'],['sph',0.045,0.125,0.03,-0.3,'eye'],['spr',0.22,-0.14,0.03,-0.31],['spr',0.22,0.14,0.03,-0.31],['spr',0.2,0,0.12,-0.29],['box',0.27,0.03,0.03,0,0.05,-0.3,'strap'],['box',0.03,0.03,0.4,-0.13,-0.02,-0.22,'strap'],['box',0.03,0.03,0.4,0.13,-0.02,-0.22,'strap'],['riv',-0.135,0.05,-0.3],['riv',0.135,0.05,-0.3],
-          ['box',0.24,0.025,0.22,0,0.0,-0.42,'under'],['box',0.012,0.03,0.3,-0.126,-0.06,-0.25,'glow'],['box',0.012,0.03,0.3,0.126,-0.06,-0.25,'glow']]},
+  pieces:[['sph',0.12,0,0.02,0.0,'plate'],['ell',0.14,0.16,0.22,0,0.0,-0.16,'plate'],['cyl',0.09,0.125,0.26,0,-0.07,-0.36,'plate','z',14],['ell',0.1,0.09,0.08,0,-0.08,-0.48,'under'],['ell',0.1,0.07,0.1,0,-0.12,-0.3,'under'],
+          ['cyl',0.03,0.015,0.14,-0.08,0.17,-0.1,'plate2','y',6],['cyl',0.03,0.015,0.14,0.08,0.17,-0.1,'plate2','y',6],
+          ['cyl',0.055,0.055,0.03,0,0.1,-0.22,'plate2','y',12],['cyl',0.038,0.038,0.045,0,0.1,-0.22,'eye','y',12],['spr',0.2,0,0.14,-0.24],
+          ['sph',0.04,-0.115,0.03,-0.26,'eye'],['sph',0.04,0.115,0.03,-0.26,'eye'],['spr',0.2,-0.13,0.03,-0.27],['spr',0.2,0.13,0.03,-0.27],
+          ['cyl',0.115,0.115,0.03,0,-0.06,-0.4,'strap','z',16],['cyl',0.14,0.14,0.025,0,0.0,-0.2,'strap','z',16],['box',0.025,0.025,0.26,-0.12,-0.02,-0.3,'strap'],['box',0.025,0.025,0.26,0.12,-0.02,-0.3,'strap'],
+          ['riv',-0.125,0.0,-0.2],['riv',0.125,0.0,-0.2],['box',0.012,0.03,0.22,-0.11,-0.06,-0.26,'glow'],['box',0.012,0.03,0.22,0.11,-0.06,-0.26,'glow']]},
 ];
 for(const [L,side,par,at] of [['FL',-1,'barrel',[-0.17,-0.3,-0.42]],['FR',1,'barrel',[0.17,-0.3,-0.42]],['BL',-1,'croup',[-0.17,-0.32,0]],['BR',1,'croup',[0.17,-0.32,0]]]){
   const back=L[0]==='B', w=back?0.14:0.13, d=back?0.15:0.14;
   HORSE.push({n:'upper'+L,p:par,at,rot:[0,0,0],mass:back?20:18,c:[0,-0.22,0],r:0.17,pri:9,hp:1,leg:L, hit:[[w,0.45,d,0,-0.22,0]],
-    pieces:[['plate',w,0.45,d,0,-0.22,0,'plate'],['cyl',0.1,0.1,0.17,0,0,0,'plate2','x',12],['cyl',0.04,0.04,0.19,0,0,0,'glow','x',10],['spr',0.2,side*0.1,0,0],
-            ['cyl',0.022,0.022,0.3,side*0.085,-0.2,0.07,'chrome','y',8],['cyl',0.03,0.03,0.08,side*0.085,-0.06,0.07,'chrome','y',8],['box',0.012,0.3,0.02,-side*0.07,-0.22,-0.075,'glow']]});
+    pieces:[['cyl',0.06,0.075,0.44,0,-0.22,0,'plate','y',12],['sph',0.095,0,0,0,'plate2'],['cyl',0.04,0.04,0.2,0,0,0,'glow','x',10],['spr',0.2,side*0.1,0,0],
+            ['cyl',0.02,0.02,0.3,side*0.085,-0.2,0.07,'chrome','y',8],['cyl',0.03,0.03,0.08,side*0.085,-0.06,0.07,'chrome','y',8],['box',0.012,0.28,0.02,-side*0.07,-0.22,-0.07,'glow']]});
   HORSE.push({n:'lower'+L,p:'upper'+L,at:[0,-0.44,0],rot:[0,0,0],mass:8,c:[0,-0.24,0],r:0.15,pri:8,hp:1,leg:L, hit:[[0.11,0.44,0.12,0,-0.22,0],[0.13,0.08,0.15,0,-0.46,0]],
-    pieces:[['plate',0.11,0.44,0.12,0,-0.22,0,'plate'],['cyl',0.08,0.08,0.14,0,0,0,'plate2','x',12],['cyl',0.03,0.03,0.16,0,0,0,'glow','x',10],
-            ['box',0.12,0.05,0.13,0,-0.3,0,'glow'],['plate',0.12,0.05,0.13,0,-0.38,0,'plate2'],['box',0.13,0.08,0.15,0,-0.46,0,'boot']]});
+    pieces:[['cyl',0.045,0.058,0.42,0,-0.22,0,'plate','y',12],['sph',0.072,0,0,0,'plate2'],['cyl',0.03,0.03,0.16,0,0,0,'glow','x',10],
+            ['cyl',0.055,0.055,0.05,0,-0.3,0,'glow','y',12],['cyl',0.06,0.06,0.05,0,-0.37,0,'plate2','y',12],['cyl',0.07,0.08,0.09,0,-0.455,0,'boot','y',12]]});
 }
 
-// ---- the rider: goggles, bandana, poncho with fringe, quiver, gloves. Pivots as RIDER_RIG. ----
+// ---- the rider: a man in a poncho, goggles, bandana, quiver, gloves. Pivots as RIDER_RIG. ----
 const RIDER=[
  {n:'pelvis',p:'barrel',at:[0,0.42,0.05],rot:[0,0,0],mass:14,c:[0,0.1,0],r:0.2,pri:10,hp:1, hit:[[0.36,0.2,0.3,0,0.1,0]],
-  pieces:[['box',0.36,0.2,0.3,0,0.1,0,'coat'],['box',0.37,0.05,0.31,0,0.17,0,'strap'],['box',0.05,0.06,0.02,0,0.17,-0.16,'chrome']]},
+  pieces:[['ell',0.18,0.11,0.15,0,0.1,0,'coat'],['cyl',0.17,0.17,0.05,0,0.17,0,'strap','y',16],['box',0.05,0.05,0.02,0,0.17,-0.165,'chrome']]},
  {n:'torso',p:'pelvis',at:[0,0.2,0],rot:[0,0,0],mass:30,c:[0,0.3,0],r:0.4,pri:11,hp:2, hit:[[0.6,0.6,0.44,0,0.3,0]],
-  pieces:(function(){ const p=[['box',0.6,0.6,0.44,0,0.3,0,'poncho'],['box',0.66,0.16,0.5,0,0.04,0,'poncho'],['sph',0.07,-0.3,0.5,0,'poncho'],['sph',0.07,0.3,0.5,0,'poncho']];
-    for(let x=-0.27;x<=0.271;x+=0.06){ p.push(['box',0.035,0.1,0.015,x,-0.05,-0.22,'band']); p.push(['box',0.035,0.1,0.015,x,-0.05,0.22,'band']); }
-    for(let z=-0.2;z<=0.201;z+=0.08){ p.push(['box',0.015,0.1,0.035,-0.3,-0.05,z,'band']); p.push(['box',0.015,0.1,0.035,0.3,-0.05,z,'band']); }
-    p.push(['box',0.08,0.62,0.03,0.12,0.3,-0.225,'glove']); // bandolier strap across the chest
-    p.push(['cyl',0.055,0.055,0.5,0.17,0.42,0.2,'quiver','y',8]); // quiver on the back, slung right
+  pieces:(function(){ const p=[['ell',0.19,0.3,0.14,0,0.3,0,'coat'],['lathe',[[0.1,0.0],[0.4,-0.04],[0.42,0.0],[0.38,0.16],[0.3,0.38],[0.2,0.56],[0.1,0.64]],0,0,0,'poncho',24]];
+    for(let i=0;i<22;i++){ const a=i/22*PI*2; p.push(['box',0.03,0.1,0.015,Math.cos(a)*0.41,-0.07,Math.sin(a)*0.41,'band',{rot:[0,-a,0]}]); }
+    p.push(['box',0.08,0.6,0.03,0.12,0.3,-0.17,'glove',{rot:[0,0,0.2]}]); // bandolier
+    p.push(['cyl',0.055,0.05,0.5,0.17,0.42,0.2,'quiver','y',10]); p.push(['cyl',0.058,0.058,0.04,0.17,0.64,0.2,'strap','y',10]);
     for(let i=0;i<4;i++){ const x=0.14+i*0.025, z=0.17+(i%2)*0.04; p.push(['cyl',0.007,0.007,0.34,x,0.78,z,'shaft','y',4]); p.push(['box',0.02,0.07,0.03,x,0.9,z,'fletch']); }
     return p; })()},
  {n:'neck',p:'torso',at:[0,0.6,0],rot:[0,0,0],mass:2,c:[0,0.06,0],r:0.12,pri:2,hp:1, hit:[[0.12,0.12,0.12,0,0.05,0]],
-  pieces:[['box',0.12,0.12,0.12,0,0.05,0,'bandana']]},
+  pieces:[['cyl',0.065,0.07,0.12,0,0.05,0,'bandana','y',12]]},
  {n:'head',p:'neck',at:[0,0.12,0],rot:[0,0,0],mass:5,c:[0,0.1,0],r:0.16,pri:1,hp:1, hit:[[0.24,0.26,0.24,0,0.1,0],[0.28,0.15,0.28,0,0.04,0]],
-  pieces:[['box',0.24,0.26,0.24,0,0.1,0,'void'],['box',0.28,0.15,0.28,0,0.04,0,'bandana'],['box',0.1,0.18,0.06,0,-0.05,0.14,'bandana'],
-          ['box',0.26,0.05,0.26,0,0.15,0,'glove'],
-          ['cyl',0.06,0.06,0.035,-0.065,0.11,-0.125,'plate2','z',12],['cyl',0.06,0.06,0.035,0.065,0.11,-0.125,'plate2','z',12],['box',0.04,0.03,0.03,0,0.11,-0.13,'plate2'],
-          ['cyl',0.045,0.045,0.04,-0.065,0.11,-0.13,'eye','z',12],['cyl',0.045,0.045,0.04,0.065,0.11,-0.13,'eye','z',12],['spr',0.14,-0.065,0.11,-0.15],['spr',0.14,0.065,0.11,-0.15],['box',0.26,0.04,0.26,0,0.11,0,'strap'],['box',0.08,0.08,0.05,0,0.0,0.15,'bandana']]},
+  pieces:[['ell',0.12,0.14,0.12,0,0.11,0,'void'],['ell',0.135,0.1,0.135,0,0.05,0,'bandana'],['cyl',0.12,0.14,0.08,0,0.0,0,'bandana','y',14],['box',0.08,0.2,0.05,0,-0.06,0.12,'bandana',{rot:[-0.3,0,0]}],
+          ['cyl',0.13,0.13,0.035,0,0.11,0,'strap','y',14],
+          ['cyl',0.055,0.055,0.035,-0.065,0.11,-0.11,'plate2','z',12],['cyl',0.055,0.055,0.035,0.065,0.11,-0.11,'plate2','z',12],['box',0.04,0.025,0.03,0,0.11,-0.115,'plate2'],
+          ['cyl',0.042,0.042,0.04,-0.065,0.11,-0.115,'eye','z',12],['cyl',0.042,0.042,0.04,0.065,0.11,-0.115,'eye','z',12],['spr',0.14,-0.065,0.11,-0.14],['spr',0.14,0.065,0.11,-0.14]]},
  {n:'hat',p:'head',at:[0,0.22,0],rot:[-0.3,0,0],mass:0.5,c:[0,0.12,0],r:0.14,pri:0,hp:1, hit:[[0.4,0.28,0.4,0,0.18,0]],
-  pieces:[['cyl',0.34,0.34,0.035,0,0,0,'hat','y',16],['cyl',0.19,0.225,0.27,0,0.15,0,'hat','y',14],['cyl',0.232,0.232,0.055,0,0.05,0,'band','y',14],['box',0.07,0.03,0.18,0,0.29,0,'void'],['box',0.08,0.03,0.2,-0.3,0.025,0,'hat',{rot:[0,0,0.35]}],['box',0.08,0.03,0.2,0.3,0.025,0,'hat',{rot:[0,0,-0.35]}]]},
+  pieces:[['lathe',[[0.0,0.0],[0.2,0.0],[0.3,0.012],[0.34,0.04],[0.33,0.055],[0.3,0.04],[0.2,0.03],[0.0,0.03]],0,0,0,'hat',20],['lathe',[[0.0,0.02],[0.22,0.02],[0.215,0.14],[0.19,0.26],[0.1,0.29],[0.0,0.29]],0,0,0,'hat',18],
+          ['cyl',0.226,0.226,0.05,0,0.06,0,'band','y',18],['ell',0.07,0.02,0.11,0,0.29,0,'void']]},
  {n:'upperArmL',p:'torso',at:[-0.3,0.5,0],rot:[-1.3,0,0.3],mass:4,c:[0,-0.15,0],r:0.12,pri:6,hp:1,arm:true, hit:[[0.1,0.3,0.1,0,-0.15,0]],
-  pieces:[['box',0.1,0.3,0.1,0,-0.15,0,'poncho']]},
+  pieces:[['sph',0.065,0,0,0,'poncho'],['cyl',0.05,0.045,0.3,0,-0.15,0,'poncho','y',10]]},
  {n:'lowerArmL',p:'upperArmL',at:[0,-0.3,0],rot:[0.2,0,0],mass:3,c:[0,-0.15,0],r:0.11,pri:6,hp:1,arm:true,bow:true, hit:[[0.09,0.3,0.09,0,-0.15,0]],
-  pieces:[['sph',0.058,0,0,0,'coat'],['box',0.09,0.3,0.09,0,-0.15,0,'coat'],['box',0.1,0.08,0.1,0,-0.3,0,'glove'],['box',0.105,0.03,0.105,0,-0.25,0,'glow'],['box',0.03,0.06,0.025,-0.03,-0.36,-0.03,'glove'],['box',0.03,0.06,0.025,0.0,-0.36,-0.045,'glove'],['box',0.03,0.06,0.025,0.03,-0.36,-0.03,'glove']]},
+  pieces:[['sph',0.05,0,0,0,'coat'],['cyl',0.042,0.04,0.28,0,-0.14,0,'coat','y',10],['sph',0.055,0,-0.3,0,'glove'],['cyl',0.05,0.05,0.03,0,-0.25,0,'glow','y',10],['box',0.03,0.06,0.025,-0.03,-0.35,-0.03,'glove'],['box',0.03,0.06,0.025,0.0,-0.355,-0.045,'glove'],['box',0.03,0.06,0.025,0.03,-0.35,-0.03,'glove']]},
  {n:'upperArmR',p:'torso',at:[0.3,0.5,0],rot:[-1.0,0,-0.7],mass:4,c:[0,-0.15,0],r:0.12,pri:6,hp:1,arm:true, hit:[[0.1,0.3,0.1,0,-0.15,0]],
-  pieces:[['box',0.1,0.3,0.1,0,-0.15,0,'poncho']]},
+  pieces:[['sph',0.065,0,0,0,'poncho'],['cyl',0.05,0.045,0.3,0,-0.15,0,'poncho','y',10]]},
  {n:'lowerArmR',p:'upperArmR',at:[0,-0.3,0],rot:[-1.2,0,0],mass:3,c:[0,-0.15,0],r:0.11,pri:6,hp:1,arm:true, hit:[[0.09,0.3,0.09,0,-0.15,0]],
-  pieces:[['sph',0.058,0,0,0,'coat'],['box',0.09,0.3,0.09,0,-0.15,0,'coat'],['box',0.1,0.08,0.1,0,-0.3,0,'glove'],['box',0.105,0.03,0.105,0,-0.25,0,'glow']]},
+  pieces:[['sph',0.05,0,0,0,'coat'],['cyl',0.042,0.04,0.28,0,-0.14,0,'coat','y',10],['sph',0.055,0,-0.3,0,'glove'],['cyl',0.05,0.05,0.03,0,-0.25,0,'glow','y',10]]},
  {n:'upperLegL',p:'pelvis',at:[-0.18,0,0],rot:[-1.2,0,0.3],mass:10,c:[0,-0.2,0],r:0.14,pri:7,hp:1,rleg:true, hit:[[0.13,0.4,0.13,0,-0.2,0]],
-  pieces:[['sph',0.085,0,0,0,'coat'],['box',0.13,0.4,0.13,0,-0.2,0,'coat']]},
+  pieces:[['sph',0.08,0,0,0,'coat'],['cyl',0.065,0.055,0.4,0,-0.2,0,'coat','y',10]]},
  {n:'lowerLegL',p:'upperLegL',at:[0,-0.4,0],rot:[1.5,0,0],mass:5,c:[0,-0.2,0],r:0.12,pri:7,hp:1,rleg:true, hit:[[0.11,0.4,0.11,0,-0.2,0],[0.12,0.1,0.2,0,-0.42,-0.03]],
-  pieces:[['sph',0.072,0,0,0,'coat'],['box',0.11,0.4,0.11,0,-0.2,0,'coat'],['box',0.115,0.05,0.115,0,-0.3,0,'glow'],['box',0.12,0.1,0.2,0,-0.42,-0.03,'boot'],['cyl',0.025,0.025,0.02,0,-0.42,0.08,'chrome','z',6]]},
+  pieces:[['sph',0.062,0,0,0,'coat'],['cyl',0.052,0.05,0.3,0,-0.15,0,'coat','y',10],['cyl',0.058,0.062,0.16,0,-0.34,0,'boot','y',10],['ell',0.06,0.045,0.11,0,-0.42,-0.05,'boot'],['cyl',0.058,0.058,0.03,0,-0.3,0,'glow','y',10],['cyl',0.022,0.022,0.015,0,-0.42,0.07,'chrome','z',6]]},
  {n:'upperLegR',p:'pelvis',at:[0.18,0,0],rot:[-1.2,0,-0.3],mass:10,c:[0,-0.2,0],r:0.14,pri:7,hp:1,rleg:true, hit:[[0.13,0.4,0.13,0,-0.2,0]],
-  pieces:[['sph',0.085,0,0,0,'coat'],['box',0.13,0.4,0.13,0,-0.2,0,'coat']]},
+  pieces:[['sph',0.08,0,0,0,'coat'],['cyl',0.065,0.055,0.4,0,-0.2,0,'coat','y',10]]},
  {n:'lowerLegR',p:'upperLegR',at:[0,-0.4,0],rot:[1.5,0,0],mass:5,c:[0,-0.2,0],r:0.12,pri:7,hp:1,rleg:true, hit:[[0.11,0.4,0.11,0,-0.2,0],[0.12,0.1,0.2,0,-0.42,-0.03]],
-  pieces:[['sph',0.072,0,0,0,'coat'],['box',0.11,0.4,0.11,0,-0.2,0,'coat'],['box',0.115,0.05,0.115,0,-0.3,0,'glow'],['box',0.12,0.1,0.2,0,-0.42,-0.03,'boot'],['cyl',0.025,0.025,0.02,0,-0.42,0.08,'chrome','z',6]]},
+  pieces:[['sph',0.062,0,0,0,'coat'],['cyl',0.052,0.05,0.3,0,-0.15,0,'coat','y',10],['cyl',0.058,0.062,0.16,0,-0.34,0,'boot','y',10],['ell',0.06,0.045,0.11,0,-0.42,-0.05,'boot'],['cyl',0.058,0.058,0.03,0,-0.3,0,'glow','y',10],['cyl',0.022,0.022,0.015,0,-0.42,0.07,'chrome','z',6]]},
 ];
 const GALLOP={FL:0.5,FR:0.62,BL:0.0,BR:0.12};
 
@@ -192,7 +204,9 @@ function addPiece(THREE,M,g,pc){
   else if(pc[0]==='plate'){ geo=plateGeo(THREE,pc[1],pc[2],pc[3],pc[8]||0.014); m=new THREE.Mesh(geo,M[pc[7]]); m.position.set(pc[4],pc[5],pc[6]); }
   else if(pc[0]==='cyl'){ geo=new THREE.CylinderGeometry(pc[1],pc[2],pc[3],pc[9]||12); m=new THREE.Mesh(geo,M[pc[7]]); m.position.set(pc[4],pc[5],pc[6]);
     if(pc[8]==='x') m.rotation.z=PI/2; else if(pc[8]==='z') m.rotation.x=PI/2; }
-  else if(pc[0]==='sph'){ geo=new THREE.SphereGeometry(pc[1],10,8); m=new THREE.Mesh(geo,M[pc[5]]); m.position.set(pc[2],pc[3],pc[4]); matName=pc[5]; }
+  else if(pc[0]==='ell'){ geo=_geoCache.ell||(_geoCache.ell=new THREE.SphereGeometry(1,18,12)); m=new THREE.Mesh(geo,M[pc[7]]); m.position.set(pc[4],pc[5],pc[6]); m.scale.set(pc[1],pc[2],pc[3]); matName=pc[7]; }
+  else if(pc[0]==='lathe'){ const pts=pc[1].map(q=>new THREE.Vector2(q[0],q[1])); geo=new THREE.LatheGeometry(pts,pc[6]||20); geo.computeVertexNormals(); m=new THREE.Mesh(geo,M[pc[5]]); m.position.set(pc[2],pc[3],pc[4]); matName=pc[5]; }
+  else if(pc[0]==='sph'){ geo=new THREE.SphereGeometry(pc[1],14,10); m=new THREE.Mesh(geo,M[pc[5]]); m.position.set(pc[2],pc[3],pc[4]); matName=pc[5]; }
   else if(pc[0]==='riv'){ geo=_geoCache.riv||(_geoCache.riv=new THREE.SphereGeometry(0.013,6,5)); m=new THREE.Mesh(geo,M.chrome); m.position.set(pc[1],pc[2],pc[3]); matName='chrome'; }
   else if(pc[0]==='spr'){ m=new THREE.Sprite(M.spr); m.scale.set(pc[1],pc[1],1); m.position.set(pc[2],pc[3],pc[4]); m.userData.glow=true; g.add(m); return m; }
   else if(pc[0]==='torus'){ geo=new THREE.TorusGeometry(pc[1],pc[2],6,16,pc[7]||PI*2); m=new THREE.Mesh(geo,M[pc[6]]); m.position.set(pc[3],pc[4],pc[5]); matName=pc[6]; }
