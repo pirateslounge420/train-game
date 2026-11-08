@@ -1,5 +1,8 @@
 # Progress log (newest on top)
 
+## 2026-11-07 — Claude (chat): machine riders, round three (outline, proportions, neck, tail)
+- Mike: "a little better but still needs work", no specifics. Went at what was furthest from the sprite: a dark outline (an inverted hull on every solid piece, `build(THREE,{outline:true})`, the sprite's black edge), a longer slimmer body and a longer head, the neck as one gold curve (no dark blobs, matched radii, the mane a low ridge along the whole crest), a narrower poncho, a tail that hangs in a curve. Renders updated. Rig data unchanged.
+
 ## 2026-11-04 — Claude (chat): machine riders rebuilt as sculpted forms (Melee, not Minecraft)
 - Mike: not pleased with the boxy low-poly look; wants models that resemble his pixel sprite (`reference/assets/gold-lightning-sprite.png`) at Super Smash Bros. Melee quality. Asked whether to go pixel art; my advice was no (first-person 3D, per-part gore and ragdolls need meshes; sprites would mean hundreds of frames per gang) and to pixelate the render instead if the feel is wanted. Not decided.
 - `machine-riders.js`: every piece is now a rounded form: ellipsoids, tapered tubes with ball joints, lathes (the poncho is a cone with the pattern, the hat a lathe with a curled brim). Gold body with dark belly and chest; mane as tufts; tail as strands; neck tubes with joint spheres. Rider: capsule limbs, ball joints, round head under the bandana, goggles under the brim. Sprite palette for Gold Lightning. New piece kinds `ell` and `lathe`. Rig data unchanged (checked).
