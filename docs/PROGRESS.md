@@ -1,5 +1,8 @@
 # Progress log (newest on top)
 
+## 2026-11-07 (evening) — Claude (chat): 0.8 would not start on Mike's Mac; standalone build
+- Two causes. (1) Hidden panels (`#over`, `#loaderr`) were still displayed: `.overlay{display:flex}` beats the `hidden` attribute, so an invisible panel sat over the Ride button and ate the click. Fixed with `[hidden]{display:none!important}` in 0.8 and the artifact source. (2) three.js is fetched from cdnjs at load; on his Mac that fetch failed ("the 3D library won't load"). `reference/train-game-prototype-0.8-standalone.html` has r128 inlined (758 KB) and runs with no network; verified headless. For Mike's playtests send the standalone; the CDN build stays the reference.
+
 ## 2026-11-07 — Claude (chat): machine riders, round three (outline, proportions, neck, tail)
 - Mike: "a little better but still needs work", no specifics. Went at what was furthest from the sprite: a dark outline (an inverted hull on every solid piece, `build(THREE,{outline:true})`, the sprite's black edge), a longer slimmer body and a longer head, the neck as one gold curve (no dark blobs, matched radii, the mane a low ridge along the whole crest), a narrower poncho, a tail that hangs in a curve. Renders updated. Rig data unchanged.
 
