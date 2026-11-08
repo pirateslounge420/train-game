@@ -272,6 +272,13 @@ A second chat built these into the same artifact on 3 Nov and they are kept in t
 - **Chained fists, not magnet hands.** Your hands are grappling fists on chains: the chain runs from a cuff on the wrist back into the forearm, and the first links always show. No magnet core, no electric arc, no glow. The fist flies out on its chain and the chain pays out behind it (a link every 4 cm, sagging with its length, rattling as it runs); it clamps, carries and reels exactly as §AA's hand did, so the grab mechanics, the reach, the spring and the thrown-off tether are unchanged. §X's "hands float on magnets" is replaced: they hang on their chains.
 - Still the right fist only. Item 2 ("Fists") shows both; the left fist firing, and whether a fist can hit a rider, are next and Mike's call.
 
+## §AC. The fist is lobbed, and it's heavy (8 Nov; Mike, locked; amends §AA, §AB) — built ref 0.10
+- **Why.** Hats were far too easy to take: the fist homed onto whatever was nearest the crosshair. Now it is thrown.
+- **The lob.** On the train the fist leaves at 13 m/s (tap) to 28 m/s (full charge) along your aim, keeps the train's speed the way an arrow does, and falls under 1.4× gravity (it is iron). It takes only what it passes within 0.42 m of: a hat, an arrow, a racked arrow in a wall. Lead the rider, judge the arc. It stops at a car wall, on the ground, or at the end of its chain (7–26 m), hangs a beat, then is hauled back.
+- **Heavy.** A kick and a camera jolt on the throw that grow with the charge; a thud where it lands; hauled home at a steady 14 m/s on the chain (not the old elastic snap), sagging more; half a second before the next throw. The old spring reach rules (§AA) no longer apply on the train.
+- **Off the train** the fist still flies straight to a car and latches (§AA): that's a rescue, not a trick shot.
+- Open: the catch radius (0.42 m), the gravity (1.4×), whether a fist that passes a rider's head should knock him.
+
 ## §Z. The queue (order of work for Claude Code)
 0. **Next, before the rest of item 1 (3 Nov, late afternoon):** fix arrows passing through riders (§X), then the cam bow's speeds (§X), two surges a stretch (§Y), stretches 100 % longer (§Y), and towns refilling to 15 arrows (§X). Small, and it's the core feel.
 1. Port the reference build's feel into `src/`, feature by feature, keeping the repo's module layout: §B/§L/§U archery and hitboxes, §C/§M walking and phone controls, §G/§R the seeded line, climate biomes and the day, §D/§K/§N the four cars, the engine and the surge, §E/§O/§U riders, dismounted riders and gore (as data), §H/§T hats, §I HUD, §J/§Q look, §S the conductor, crouch, knock-off and hook. Stop and explain after each.

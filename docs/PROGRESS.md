@@ -1,5 +1,8 @@
 # Progress log (newest on top)
 
+## 2026-11-08 — Claude (chat): reference 0.10, the lobbed, heavy fist (§AC)
+- Mike: too easy to grab hats; make the chain fist a lob, and heavy. `train-game-prototype-0.10.html` (+ `-standalone`): on the train `launchHand` throws the fist as a projectile (`mh.kind='lob'`, velocity from charge + train velocity, 13.5 m/s² gravity), integrated per frame with shell, ground and chain-length stops and a 0.42 m catch; hauled back at 14 m/s; kick, jolt, thud, longer cooldown, bigger chain sag. Off the train the old straight latch onto a car stays. Aim highlight now only off the train. Verified headless.
+
 ## 2026-11-07 (night) — Claude (chat): reference 0.9, tunnels off, chained fists (§AB)
 - `reference/train-game-prototype-0.9.html` from 0.8 (0.8 kept), plus `-standalone` with three.js inlined for Mike's Mac. Tunnels behind `TUNNELS=false`. The magnet hand is a grappling fist on a chain: an InstancedMesh of torus links laid along the wrist-to-fist line with sag, links alternating 90°, a cuff and three fixed links on each hand, a rattle instead of the crackle. Mechanics untouched. Verified headless (fist fired from the caboose roof, chain drawn to the loco).
 - The artifact gets 0.9 too.
