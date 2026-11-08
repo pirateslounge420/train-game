@@ -1,5 +1,9 @@
 # Progress log (newest on top)
 
+## 2026-11-07 (night) — Claude (chat): reference 0.9, tunnels off, chained fists (§AB)
+- `reference/train-game-prototype-0.9.html` from 0.8 (0.8 kept), plus `-standalone` with three.js inlined for Mike's Mac. Tunnels behind `TUNNELS=false`. The magnet hand is a grappling fist on a chain: an InstancedMesh of torus links laid along the wrist-to-fist line with sag, links alternating 90°, a cuff and three fixed links on each hand, a rattle instead of the crackle. Mechanics untouched. Verified headless (fist fired from the caboose roof, chain drawn to the loco).
+- The artifact gets 0.9 too.
+
 ## 2026-11-07 (evening) — Claude (chat): 0.8 would not start on Mike's Mac; standalone build
 - Two causes. (1) Hidden panels (`#over`, `#loaderr`) were still displayed: `.overlay{display:flex}` beats the `hidden` attribute, so an invisible panel sat over the Ride button and ate the click. Fixed with `[hidden]{display:none!important}` in 0.8 and the artifact source. (2) three.js is fetched from cdnjs at load; on his Mac that fetch failed ("the 3D library won't load"). `reference/train-game-prototype-0.8-standalone.html` has r128 inlined (758 KB) and runs with no network; verified headless. For Mike's playtests send the standalone; the CDN build stays the reference.
 

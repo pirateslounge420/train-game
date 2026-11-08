@@ -267,6 +267,11 @@ A second chat built these into the same artifact on 3 Nov and they are kept in t
 - **Controls.** Right click / Grab / E: tap or hold. Tapping Grab mid-draw cancels the draw; clicking Draw mid-charge cancels the charge (§X). Close up, a tap still wears a racked hat, talks to the conductor and climbs a stopped train. On a phone, a quick tap on something in view sends the hand to it. Item 2's left click says fists come next.
 - **Open for Mike:** the reach, the spring's timing, whether a snatched hat you already own should go on your head or just drop, and whether the hand should ever hit a rider (it doesn't).
 
+## §AB. No tunnels for now; the fists are on chains (7 Nov; Mike, locked; amends §F, §X, §AA) — built ref 0.9
+- **Tunnels are off for now** (Mike). The code stays behind one switch (`TUNNELS=false` in the reference); tunnel biomes play as open country. Back when Mike says.
+- **Chained fists, not magnet hands.** Your hands are grappling fists on chains: the chain runs from a cuff on the wrist back into the forearm, and the first links always show. No magnet core, no electric arc, no glow. The fist flies out on its chain and the chain pays out behind it (a link every 4 cm, sagging with its length, rattling as it runs); it clamps, carries and reels exactly as §AA's hand did, so the grab mechanics, the reach, the spring and the thrown-off tether are unchanged. §X's "hands float on magnets" is replaced: they hang on their chains.
+- Still the right fist only. Item 2 ("Fists") shows both; the left fist firing, and whether a fist can hit a rider, are next and Mike's call.
+
 ## §Z. The queue (order of work for Claude Code)
 0. **Next, before the rest of item 1 (3 Nov, late afternoon):** fix arrows passing through riders (§X), then the cam bow's speeds (§X), two surges a stretch (§Y), stretches 100 % longer (§Y), and towns refilling to 15 arrows (§X). Small, and it's the core feel.
 1. Port the reference build's feel into `src/`, feature by feature, keeping the repo's module layout: §B/§L/§U archery and hitboxes, §C/§M walking and phone controls, §G/§R the seeded line, climate biomes and the day, §D/§K/§N the four cars, the engine and the surge, §E/§O/§U riders, dismounted riders and gore (as data), §H/§T hats, §I HUD, §J/§Q look, §S the conductor, crouch, knock-off and hook. Stop and explain after each.
